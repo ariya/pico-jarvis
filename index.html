@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en" class="full-h">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pico Jarvis</title>
+</head>
+
+<body class="full-h">
+    <main id="chat">
+    </main>
+    <footer>
+        <div class="input-container">
+            <input type="text" id="prompt" autocomplete="off" autofocus placeholder="Ask something"></textarea>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const $ = (id) => document.getElementById(id);
+
+            const $div = (cls) => {
+                const el = document.createElement('div');
+                el.setAttribute('class', cls);
+                return el;
+            }
+
+            function message(type, text) {
+                const el = $div(`speech-bubble-${type} color-${type}`);
+                el.innerText = text;
+                const wrapper = $div(`speech speech-${type}`);
+                wrapper.appendChild(el);
+                $('chat').appendChild(wrapper);
+                wrapper.classList.toggle('fade-in');
+                setTimeout(() => {
+                    el.scrollIntoView({ behavior: 'smooth' });
+                }, 0);
+            }
+
+            const isTouchDevice = () => 'ontouchstart' in window;
+
+            // On a device with touch support (read: mobile), do not autofocus
+            // since it'll annoyingly trigger the on-screen keyboard
+            function focusInput() {
+                if (!isTouchDevice()) {
+                    $('prompt').focus();
+                }
+            }
+
+            function ask(question) {
+                message('human', question);
+                $('prompt').blur();
+                const url = '/chat?' + encodeURIComponent(question);
+                fetch(url).then(response => {
+                    if (response.status !== 200) {
+                        throw new Error('Unable to get an answer!')
+                    }
+                    return response.text();
+                }).then(answer => {
+                    console.log('Answer:', answer);
+                    message('assistant', answer);
+                    focusInput();
+                }).catch(error => {
+                    message('panic', error);
+                });
+            }
+
+            $('prompt').addEventListener('keydown', function handleKeyInput(event) {
+                if (event.key === 'Enter') {
+                    const el = $('prompt');
+                    const question = el.value.trim();
+                    if (question.length > 0) {
+                        ask(question);
+                        el.value = '';
+                    }
+                }
+            });
+
+            setTimeout(() => {
+                message('assistant', 'Hi, this is Pico Jarvis!');
+            }, 0);
+        });
+    </script>
+
+    <style>
+        html {
+            line-height: 1.5;
+            background-color: rgb(29, 35, 42);
+            font-family: ui-sans-serif, system-ui, -apple-system,
+                BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+                Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+                "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+
+        .full-h {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            color: rgb(166, 173, 186);
+            color-scheme: dark;
+        }
+
+        *,
+        ::after,
+        ::before {
+            box-sizing: border-box;
+            border-width: 0;
+            border-style: solid;
+            border-color: currentColor;
+        }
+
+        footer {
+            flex: none;
+            padding: 0;
+        }
+
+        main#chat {
+            padding: 1rem;
+            overflow-y: scroll;
+            -webkit-overflow-scrolling: touch;
+            flex: auto;
+        }
+
+        .input-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: row;
+        }
+
+        input,
+        textarea {
+            font-family: inherit;
+            margin: 0;
+            width: 100%;
+            height: 3rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            font-size: 1rem;
+            line-height: 1.5rem;
+            border-width: 1px;
+            border-color: rgb(251, 189, 35);
+            background-color: rgb(29, 35, 42);
+            border-radius: .5rem;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+        }
+
+        input:disabled,
+        input[disabled] {
+            cursor: not-allowed;
+            border-color: rgb(25, 30, 36);
+            background-color: rgb(25, 30, 36);
+        }
+
+        .speech {
+            display: grid;
+            column-gap: .75rem;
+            padding-top: .25rem;
+            padding-bottom: .25rem;
+            opacity: 0;
+            transform: translateY(2rem);
+            transition: all 0.2s;
+        }
+
+        .speech.fade-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .speech-assistant {
+            place-items: start;
+        }
+
+        .speech-human,
+        .speech-panic {
+            place-items: end;
+        }
+
+        .speech-bubble-assistant,
+        .speech-bubble-human,
+        .speech-bubble-panic {
+            display: block;
+            position: relative;
+            width: fit-content;
+            padding: .5rem 1rem;
+            min-height: 2.5rem;
+            min-width: 2.5rem;
+            border-radius: 1rem;
+        }
+
+        .speech-bubble-assistant:after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border: 1em solid transparent;
+            border-right-color: rgb(31, 178, 166);
+            border-left: 0;
+            border-bottom: 0;
+            margin-top: -0.5em;
+            margin-left: -1em;
+        }
+
+        .speech-bubble-human:after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border: 1em solid transparent;
+            border-left-color: rgb(251, 189, 35);
+            border-right: 0;
+            border-bottom: 0;
+            margin-top: -0.5em;
+            margin-right: -1em;
+        }
+
+        .speech-bubble-panic:after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border: 1em solid transparent;
+            border-left-color: rgb(248, 114, 114);
+            border-right: 0;
+            border-bottom: 0;
+            margin-top: -0.5em;
+            margin-right: -1em;
+        }
+
+        .color-assistant {
+            background-color: rgb(31, 178, 166);
+            color: white
+        }
+
+        .color-human {
+            background-color: rgb(251, 189, 35);
+            color: rgb(56, 40, 0)
+        }
+
+        .color-panic {
+            background-color: rgb(248, 114, 114);
+            color: rgb(71, 0, 0);
+        }
+
+        div#input {
+            position: fixed;
+            width: 100%;
+            left: 0;
+            bottom: 2px;
+            padding: 0px;
+        }
+    </style>
+
+</body>
+
+</html>

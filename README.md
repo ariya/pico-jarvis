@@ -3,6 +3,7 @@
 Requirement:
 * Node.js v18 or later.
 * [llama.cpp](https://github.com/ggerganov/llama.cpp) running a model, e.g. [Orca Mini 3B](https://huggingface.co/TheBloke/orca_mini_3B-GGML).
+* `OPENWEATHERMAP_API_KEY`
 
 Run:
 ```
@@ -32,3 +33,9 @@ Try some of these examples:
 * Which is closer to Singapor: Vietnam or Australia?
 * Who is the fictional spy 007?
 * Which country is known for IKEA?
+
+and also:
+
+* How is the weather in Jakarta?
+* What is the current temperature in Palo Alto?
+* Is it currently cloudy in Seattle?

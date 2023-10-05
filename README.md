@@ -13,7 +13,11 @@ and then open `localhost:5000`.
 
 Try some of these examples:
 
-* The CEO of Google is
-* The largest planet is
-* Mona Lisa was painted by
-* The real name of Spiderman is
+* Who wrote the Canon of Medicine?
+* Who is Elon Musk?
+* What is the native language of Mr. Spock?
+* Name Indonesia #1 tourist destination
+* Which US state starts with G?
+* What is the atomic number of Magnesium?
+* Is ramen typically eaten in Egypt?
+* Who directed the Dark Knight movie?

@@ -2,7 +2,7 @@
 
 Requirement:
 * Node.js v18 or later.
-* [llama.cpp](https://github.com/ggerganov/llama.cpp) running a model, e.g. [Orca Mini 3B](https://huggingface.co/TheBloke/orca_mini_3B-GGML).
+* [llama.cpp](https://github.com/ggerganov/llama.cpp) running a model, e.g. [Mistral 7B Instruct](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF).
 * `OPENWEATHERMAP_API_KEY`
 
 Run:

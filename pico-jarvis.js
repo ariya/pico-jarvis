@@ -12,7 +12,13 @@ async function geocode(location) {
     return results.pop();
 }
 
+const WEATHER_ERROR_MSG = `Unable to retrieve weather information.
+Please supply a valid API key for OpenWeatherMap as OPENWEATHERMAP_API_KEY environment variable.`
+
 async function weather(location) {
+    if (!OPENWEATHERMAP_API_KEY || OPENWEATHERMAP_API_KEY.length < 32) {
+        throw new Error(WEATHER_ERROR_MSG);
+    }
     const { latitude, longitude } = await geocode(location);
     const url = `https://api.openweathermap.org/data/2.5/weather?units=metric&lat=${latitude}&lon=${longitude}&appid=${OPENWEATHERMAP_API_KEY}`
     const response = await fetch(url);
@@ -107,21 +113,16 @@ async function act(text) {
     }
 
     if (name === 'weather') {
-        try {
-            const { summary } = await weather(arg);
-            const observation = summary;
-            console.log('ACT weather', { arg, observation });
-            return { action, name, arg, observation };
-        } catch (e) {
-            console.error(e.toString());
-            return null;
-        }
-
+        const { summary } = await weather(arg);
+        const observation = summary;
+        console.log('ACT weather', { arg, observation });
+        return { action, name, arg, observation };
     }
+
     console.error('Not recognized action', name, arg);
 }
 
-async function answer(text) {
+function answer(text) {
     const MARKER = 'Answer:';
     const pos = text.lastIndexOf(MARKER);
     if (pos < 0) return "?";
@@ -129,26 +130,32 @@ async function answer(text) {
     return answer;
 }
 
+const finalPompt = (inquiry, observation) => `${inquiry}
+Observation: ${observation}.
+Thought: Now I have the answer.
+Answer:`;
+
 async function reason(inquiry) {
     const prompt = SYSTEM_MESSAGE + '\n\n' + inquiry;
     const response = await llama(prompt);
     console.log('--');
     console.log(response);
     console.log('--');
-    const result = await act(response);
-    if (!result) {
-        return await answer(response);
+
+    let conclusion;
+    try {
+        const result = await act(response);
+        if (!result) {
+            return answer(response);
+        }
+        const { observation } = result;
+        conclusion = await llama(finalPompt(inquiry, observation));
+    } catch (e) {
+        console.error(e.toString());
+        conclusion = e.toString();
     }
 
-    const { observation } = result;
-    const second_prompt = `${inquiry}
-Observation: ${observation}.
-Thought: Now I have the answer.
-Answer:`;
-    console.log('===');
-    console.log(second_prompt);
-    console.log('===');
-    return await llama(second_prompt);
+    return conclusion;
 }
 
 async function handler(request, response) {

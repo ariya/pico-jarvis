@@ -1,9 +1,8 @@
 # Pico Jarvis
 
-Requirement:
+Requirements:
 * Node.js v18 or later.
 * [llama.cpp](https://github.com/ggerganov/llama.cpp) running a model, e.g. [Mistral 7B Instruct](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF) or [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF).
-* `OPENWEATHERMAP_API_KEY`
 
 Run:
 ```
@@ -34,7 +33,7 @@ Try some of these examples:
 * Who is the fictional spy 007?
 * Which country is known for IKEA?
 
-and also:
+If you get an API key for [OpenWeatherMap](https://api.openweathermap.org) and supply it as `OPENWEATHERMAP_API_KEY` environment variable, try to ask the following:
 
 * How is the weather in Jakarta?
 * What is the current temperature in Palo Alto?

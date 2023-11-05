@@ -11,7 +11,13 @@ $ node pico-jarvis
 
 and then open `localhost:5000`.
 
-Try some of these examples:
+Try the following questions, one after another:
+
+* Which planet is the largest?
+* How far is it?
+* How about in miles?
+
+and also some other examples:
 
 * Who wrote the Canon of Medicine?
 * Who is Elon Musk?

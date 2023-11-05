@@ -79,9 +79,7 @@ Question: Who painted Mona Lisa?
 Thought: This is about general knowledge, I can recall the answer from my memory.
 Action: lookup: painter of Mona Lisa.
 Observation: Mona Lisa was painted by Leonardo da Vinci .
-Answer: Leonardo da Vinci painted Mona Lisa.
-
-Let's go!`;
+Answer: Leonardo da Vinci painted Mona Lisa.`;
 
 
 async function act(text) {
@@ -135,8 +133,19 @@ Observation: ${observation}.
 Thought: Now I have the answer.
 Answer:`;
 
-async function reason(inquiry) {
-    const prompt = SYSTEM_MESSAGE + '\n\n' + inquiry;
+const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history.';
+
+function context(history) {
+    if (history.length > 0) {
+        const recents = history.slice(-3 * 2); // only last 3 Q&A
+        return HISTORY_MSG + '\n\n' + recents.join('\n');
+    }
+
+    return '';
+}
+
+async function reason(history, inquiry) {
+    const prompt = SYSTEM_MESSAGE + '\n\n' + context(history) + '\n\nNow let us go!\n\n' + inquiry;
     const response = await llama(prompt);
     console.log('--');
     console.log(response);
@@ -158,6 +167,8 @@ async function reason(inquiry) {
     return conclusion;
 }
 
+const history = [];
+
 async function handler(request, response) {
     const { url } = request;
     console.log(`Handling ${url}...`);
@@ -170,10 +181,13 @@ async function handler(request, response) {
         const parsedUrl = new URL(`http://localhost/${url}`);
         const { search } = parsedUrl;
         const question = decodeURIComponent(search.substring(1));
+        const inquiry = 'Question: ' + question;
         console.log('Waiting for Llama...');
-        const answer = await reason('Question: ' + question);
+        const answer = await reason(history, inquiry);
         console.log('LLama answers:', answer);
         response.writeHead(200).end(answer);
+        history.push(inquiry);
+        history.push('Answer: ' + answer);
     } else {
         console.error(`${url} is 404!`)
         response.writeHead(404);

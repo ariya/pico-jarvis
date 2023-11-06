@@ -5,5 +5,8 @@
   "main": "pico-jarvis.js",
   "scripts": {
     "start": "node pico-jarvis.js"
+  },
+  "dependencies": {
+    "@xenova/transformers": "~2.7.0"
   }
 }

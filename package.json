@@ -1,0 +1,9 @@
+{
+  "name": "pico-jarvis",
+  "version": "0.0.1",
+  "description": "Pico Jarvis",
+  "main": "pico-jarvis.js",
+  "scripts": {
+    "start": "node pico-jarvis.js"
+  }
+}

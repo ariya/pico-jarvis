@@ -7,6 +7,7 @@
     "start": "node pico-jarvis.js"
   },
   "dependencies": {
-    "@xenova/transformers": "~2.7.0"
+    "@xenova/transformers": "~2.7.0",
+    "pdf-text-reader": "~4.0.0"
   }
 }

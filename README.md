@@ -35,6 +35,16 @@ Try the following questions:
 * Who is the fictional spy 007?
 * Which country is known for IKEA?
 
+and other questions solved by searching the PDF document:
+
+* How many planets are there in our solar system?
+* Name them all!
+* Is Pluto a planet?
+* List all the terrestrial planets
+* When was solar system formed?
+* Which materials made up the gas giants?
+* How far is Proxima Centauri?
+
 If you get an API key for [OpenWeatherMap](https://api.openweathermap.org) and supply it as `OPENWEATHERMAP_API_KEY` environment variable, try to ask the following:
 
 * How is the weather in Jakarta?

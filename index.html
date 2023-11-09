@@ -80,6 +80,23 @@
             setTimeout(() => {
                 message('assistant', 'Hi, this is Pico Jarvis!');
             }, 0);
+
+            const tests = [
+                'Who is the CEO of Google?',
+                'How many planets are there in our solar system?',
+                'Name them all!',
+                'Is Pluto not a planet?',
+                'Which planet is the largest?',
+                'List all its moons!',
+                'How far is Proxima Centauri?',
+                'When was solar system formed?',
+                'What materials compose the gas giants?'
+            ];
+
+            false && tests.forEach((test, index) => {
+                setTimeout(() => { ask(test) }, index * 4000)
+                setTimeout(() => { ask('!source') }, index * 4000 + 3500)
+            });
         });
     </script>
 

@@ -8,7 +8,7 @@ Requirements:
 
 Run:
 ```
-$ node pico-jarvis
+$ npm install && npm start
 ```
 
 and then open `localhost:5000`.

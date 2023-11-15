@@ -1,5 +1,7 @@
 # Pico Jarvis
 
+![Screenshot](screenshot.png)
+
 Requirements:
 * Node.js v18 or later.
 * [llama.cpp](https://github.com/ggerganov/llama.cpp) running a model, e.g. [Mistral 7B Instruct](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF) or [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF).
@@ -11,13 +13,7 @@ $ node pico-jarvis
 
 and then open `localhost:5000`.
 
-Try the following questions, one after another:
-
-* Which planet is the largest?
-* How far is it?
-* How about in miles?
-
-and also some other examples:
+Try the following questions:
 
 * Who wrote the Canon of Medicine?
 * Who is Elon Musk?

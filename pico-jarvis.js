@@ -47,8 +47,9 @@ const vectorize = async (text) => {
     const start = Date.now();
     const result = [];
     for (let index = 0; index < chunks.length; ++index) {
-        const { offset, text } = chunks[index];
-        const sentence = text;
+        const { offset } = chunks[index];
+        const block = chunks.slice(index, index + 4).map(({ text }) => text).join(' ');
+        const sentence = block;
         const output = await extractor([sentence], { pooling: 'mean', normalize: true });
         const vector = output[0].data;
         result.push({ index, offset, sentence, vector });
@@ -115,7 +116,6 @@ async function search(q, document, top_k = 3) {
 
 const MIN_SCORE = 0.4;
 
-const expand = (lines) => lines.reduce((expanded, v) => expanded.concat([v - 1, v, v + 1]), []);
 const ascending = (x, y) => x - y;
 const dedupe = (numbers) => [...new Set(numbers)];
 
@@ -132,7 +132,7 @@ async function lookup(question, statement) {
         return null;
     }
 
-    const indexes = dedupe(expand(expand(candidates.map(r => r.index))).sort(ascending));
+    const indexes = dedupe(candidates.map(r => r.index)).sort(ascending);
     const relevants = document.filter(({ index }) => indexes.includes(index));
     const context = relevants.map(({ sentence }) => sentence).join(' ');
     console.log();

@@ -50,3 +50,9 @@ If you get an API key for [OpenWeatherMap](https://api.openweathermap.org) and s
 * How is the weather in Jakarta?
 * What is the current temperature in Palo Alto?
 * Is it currently cloudy in Seattle?
+
+
+# Write up
+
+* [Part 1](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-1-ariya-hidayat-pcygc/)
+* [Part 2](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-2-ariya-hidayat-plynf/)

@@ -183,12 +183,13 @@ async function llama(prompt) {
     const headers = {
         'Content-Type': 'application/json'
     };
+    const stop = ['Llama:', 'User:', 'Question:'];
     const body = JSON.stringify({
-        prompt: prompt,
+        prompt,
+        stop,
         n_predict: 200,
         temperature: 0,
-        top_k: 20,
-        stop: ["Llama:", "User:"]
+        top_k: 20
     });
     const request = { method, headers, body };
     const response = await fetch(LLAMA_API_URL, request);

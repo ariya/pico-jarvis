@@ -143,7 +143,7 @@ async function lookup(question, hint) {
 
     const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context) + '\n\n' + 'Question: ' + question;
     const output = await llama(input);
-    const { action, observation, answer } = parse(output);
+    const { observation, answer } = parse(output);
 
     const terms = observation || hint;
     const refs = await search(terms, relevants);
@@ -238,18 +238,22 @@ Observation: Mona Lisa was painted by Leonardo da Vinci.
 Answer: Leonardo da Vinci painted Mona Lisa.`;
 
 function parse(text) {
-    const MARKERS = ['Answer', 'Observation', 'Action', 'Thought'];
     const parts = {};
-    let str = text;
-    for (let i = 0; i < MARKERS.length; ++i) {
-        const marker = MARKERS[i];
-        const pos = str.lastIndexOf(marker + ':');
-        if (pos >= 0) {
-            const substr = str.substr(pos + marker.length + 1).trim();
-            const value = substr.split('\n').shift();
-            str = str.slice(0, pos);
-            const key = marker.toLowerCase();
-            parts[key] = value;
+    const MARKERS = ['Answer', 'Observation', 'Action', 'Thought'];
+    const ANCHOR = MARKERS.slice().pop();
+    const start = text.lastIndexOf(ANCHOR + ':');
+    if (start >= 0) {
+        let str = text.substr(start);
+        for (let i = 0; i < MARKERS.length; ++i) {
+            const marker = MARKERS[i];
+            const pos = str.lastIndexOf(marker + ':');
+            if (pos >= 0) {
+                const substr = str.substr(pos + marker.length + 1).trim();
+                const value = substr.split('\n').shift();
+                str = str.slice(0, pos);
+                const key = marker.toLowerCase();
+                parts[key] = value;
+            }
         }
     }
     return parts;

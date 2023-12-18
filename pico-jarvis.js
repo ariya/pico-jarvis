@@ -67,12 +67,12 @@ You are given the following document, and then you respond to a query.
 You run in a process of Question, Thought, Observation, Answer.
 Avoid stating your personal opinion. Avoid making other commentary.
 
-Use Thought to describe your thoughts about the question you have been asked.
-Observation will be the result of matching the thought with the given document.
-Whenever possible, avoid recalling from your memory.
-Finally at the end, state the Answer.
+Think step by step. Always specify the full steps: Thought, Action, Observation, and Answer.
 
-Always think step by step. Never jump straight to the answer.
+Use Thought to describe your thoughts about the question you have been asked.
+Use Action to specify the key search terms.
+Observation will be the result of running the action.
+Finally at the end, state the Answer.
 
 Here is the document:
 
@@ -204,17 +204,15 @@ async function llama(prompt) {
 
 const SYSTEM_MESSAGE = `You run in a process of Question, Thought, Action, Observation.
 
-Always think step by step. Never jump straight to the answer.
-Use Thought to describe your thoughts about the question you have been asked.
-Observation will be the result of running those actions.
+Think step by step. Always specify the full steps: Thought, Action, Observation, and Answer.
 
-If you can not answer the question from your memory, use Action to run one of these actions available to you:
+Use Thought to describe your thoughts about the question you have been asked.
+For Action, choose exactly one the following:
 
 - weather: location
 - lookup: terms
 
-Never use any other actions beside the above list.
-
+Observation will be the result of running those actions.
 Finally at the end, state the Answer.
 
 Here are some sample sessions.

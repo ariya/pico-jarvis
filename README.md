@@ -2,13 +2,15 @@
 
 ![Screenshot](screenshot.png)
 
-Requirements:
-* Node.js v18 or later.
-* [llama.cpp](https://github.com/ggerganov/llama.cpp) running a model, e.g. [Mistral 7B Instruct](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF) or [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF).
-
-Run:
+First, you need to run the [API server](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md) of [llama.cpp](https://github.com/ggerganov/llama.cpp) with [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF), e.g.:
 ```
-$ npm install && npm start
+./server -m /path/to/mistral-7b-openorca.Q4_K_M.gguf
+```
+
+To launch Pico Jarvis, you need [Node.js](https://nodejs.org/) v18 or later:
+```
+npm install
+npm start
 ```
 
 and then open `localhost:5000`.

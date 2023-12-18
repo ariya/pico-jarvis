@@ -65,12 +65,14 @@ const vectorize = async (text) => {
 const LOOKUP_PROMPT = `You are an expert in retrieving information.
 You are given the following document, and then you respond to a query.
 You run in a process of Question, Thought, Observation, Answer.
-Think step by step. Avoid stating your personal opinion. Avoid making other commentary.
+Avoid stating your personal opinion. Avoid making other commentary.
 
 Use Thought to describe your thoughts about the question you have been asked.
 Observation will be the result of matching the thought with the given document.
 Whenever possible, avoid recalling from your memory.
 Finally at the end, state the Answer.
+
+Always think step by step. Never jump straight to the answer.
 
 Here is the document:
 
@@ -200,6 +202,7 @@ async function llama(prompt) {
 
 const SYSTEM_MESSAGE = `You run in a process of Question, Thought, Action, Observation.
 
+Always think step by step. Never jump straight to the answer.
 Use Thought to describe your thoughts about the question you have been asked.
 Observation will be the result of running those actions.
 
@@ -207,6 +210,8 @@ If you can not answer the question from your memory, use Action to run one of th
 
 - weather: location
 - lookup: terms
+
+Never use any other actions beside the above list.
 
 Finally at the end, state the Answer.
 

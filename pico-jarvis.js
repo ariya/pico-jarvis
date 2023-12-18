@@ -121,14 +121,14 @@ const MIN_SCORE = 0.4;
 const ascending = (x, y) => x - y;
 const dedupe = (numbers) => [...new Set(numbers)];
 
-async function lookup(question, statement) {
+async function lookup(question, hint) {
     if (document.length === 0) {
         throw new Error('Document is not indexed!');
     }
 
     source = reference = 'From my memory.';
 
-    const candidates = await search(statement, document);
+    const candidates = await search(hint, document);
     const best = candidates.slice(0, 1).shift();
     if (best.score < MIN_SCORE) {
         return null;
@@ -143,8 +143,10 @@ async function lookup(question, statement) {
 
     const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context) + '\n\n' + 'Question: ' + question;
     const output = await llama(input);
+    const { action, observation, answer } = parse(output);
 
-    const refs = await search(observation(output), relevants);
+    const terms = observation || hint;
+    const refs = await search(terms, relevants);
     const top = refs.slice(0, 1).pop();
 
     if (top.score > MIN_SCORE) {
@@ -152,7 +154,7 @@ async function lookup(question, statement) {
         source = `Best source (page ${top.page + 1}, score ${Math.round(top.score * 100)}%):\n${top.sentence}`;
     }
 
-    return answer(output);
+    return answer;
 }
 
 async function geocode(location) {
@@ -232,115 +234,75 @@ Answer: 17 degrees Celcius.
 Question: Who painted Mona Lisa?
 Thought: This is about general knowledge, I can recall the answer from my memory.
 Action: lookup: painter of Mona Lisa.
-Observation: Mona Lisa was painted by Leonardo da Vinci .
+Observation: Mona Lisa was painted by Leonardo da Vinci.
 Answer: Leonardo da Vinci painted Mona Lisa.`;
 
-
-async function act(question, text) {
-    const MARKER = 'Action:';
-    const pos = text.lastIndexOf(MARKER);
-    if (pos < 0) {
-        // throw new Error('Unable to find Action!');
-        return null;
+function parse(text) {
+    const MARKERS = ['Answer', 'Observation', 'Action', 'Thought'];
+    const parts = {};
+    let str = text;
+    for (let i = 0; i < MARKERS.length; ++i) {
+        const marker = MARKERS[i];
+        const pos = str.lastIndexOf(marker + ':');
+        if (pos >= 0) {
+            const substr = str.substr(pos + marker.length + 1).trim();
+            const value = substr.split('\n').shift();
+            str = str.slice(0, pos);
+            const key = marker.toLowerCase();
+            parts[key] = value;
+        }
     }
-    const subtext = text.substr(pos) + '\n';
-    const matches = /Action:\s*(.*?)\n/.exec(subtext);
-    const action = matches[1];
-    if (!action) {
-        return null;
-    }
+    return parts;
+}
 
-    const SEPARATOR = ':';
-    const sep = action.indexOf(SEPARATOR);
+async function act(question, action, observation, answer) {
+    const sep = action.indexOf(':');
     if (sep < 0) {
-        // throw new Error('Invalid action!');
-        // console.error('Invalid action', text);
+        console.error('Invalid action', action);
         return null;
     }
     const name = action.substring(0, sep);
     const arg = action.substring(sep + 1).trim();
 
     if (name === 'lookup') {
-        const conclusion = await lookup(question, answer(text));
-        if (!conclusion) {
-            return null;
-        }
-        return { action, name, arg, conclusion };
+        const result = await lookup(question, observation);
+        return result ? result : answer;
     }
 
     if (name === 'weather') {
-        const { summary } = await weather(arg);
-        const observation = summary;
-        console.log('ACT weather', { arg, observation });
-        return { action, name, arg, observation };
+        const condition = await weather(arg);
+        const { summary } = condition;
+        source = `Weather API: ${JSON.stringify(condition)}`;
+        return summary;
     }
 
     console.error('Not recognized action', name, arg);
 }
 
-function answer(text) {
-    const MARKER = 'Answer:';
-    const pos = text.lastIndexOf(MARKER);
-    if (pos < 0) return '?';
-    const answer = text.substr(pos + MARKER.length).trim();
-    return answer;
-}
+const capitalize = (str) => str[0].toUpperCase() + str.slice(1);
 
-function observation(text) {
-    let input = text;
-    const MARKER1 = 'Answer:';
-    const pos1 = text.lastIndexOf(MARKER1);
-    if (pos1 > 0) {
-        input = text.substr(0, pos1 - 1).trim();
-    }
-    const MARKER2 = 'Observation:';
-    const pos2 = input.lastIndexOf(MARKER2);
-    if (pos2 < 0) return '?';
-    const observation = input.substr(pos2 + MARKER2.length).trim();
-    return observation;
-}
-
-const finalPompt = (inquiry, observation) => `${inquiry}
-Observation: ${observation}.
-Thought: Now I have the answer.
-Answer:`;
+const flatten = (parts) => Object.keys(parts).map(k => `${capitalize(k)}: ${parts[k]}`).join('\n');
 
 const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history.';
 
-function context(history) {
-    if (history.length > 0) {
-        const recents = history.slice(-3 * 2); // only last 3 Q&A
-        return HISTORY_MSG + '\n\n' + recents.join('\n');
-    }
-
-    return '';
-}
+const context = (history) => (history.length > 0) ? HISTORY_MSG + '\n\n' + history.map(flatten).join('\n') : '';
 
 async function reason(history, question) {
-    const inquiry = 'Question: ' + question;
-    const prompt = SYSTEM_MESSAGE + '\n\n' + context(history) + '\n\nNow let us go!\n\n' + inquiry;
+    const prompt = SYSTEM_MESSAGE + '\n\n' + context(history) + '\n\nNow let us go!\n\n' + 'Question: ' + question;
     const response = await llama(prompt);
-    console.log('--');
-    console.log(response);
-    console.log('--');
-
-    let conclusion;
-    try {
-        const result = await act(question, response);
-        if (!result) {
-            return answer(response);
-        }
-        conclusion = result.conclusion;
-        if (!conclusion) {
-            const { observation } = result;
-            conclusion = await llama(finalPompt(inquiry, observation));
-        }
-    } catch (e) {
-        console.error(e.toString());
-        conclusion = e.toString();
+    const { thought, action, observation, answer } = parse(prompt + response);
+    if (!action) {
+        return { thought, action: 'lookup: ' + question, observation, answer };
     }
 
-    return conclusion;
+    const note = await act(question, action, observation, answer);
+    if (!note) {
+        return { thought, action, observation, answer: 'Unable to answer this!' };
+    }
+
+    const reprompt = prompt + '\n' + flatten({ thought, action, observation, answer: note });
+    const final = await llama(reprompt);
+    return parse(reprompt + final);
 }
 
 const history = [];
@@ -365,13 +327,18 @@ async function handler(request, response) {
             response.writeHead(200).end(reference);
             return;
         }
-        const inquiry = 'Question: ' + question;
+        if (question === '!reset') {
+            history.length = 0;
+            response.writeHead(200).end('Multi-turn conversation is reset.');
+            return;
+        }
         console.log('Waiting for Llama...');
-        const answer = await reason(history, question);
-        console.log('LLama answers:', answer);
+        const { thought, action, observation, answer } = await reason(history, question);
+        while (history.length > 3) {
+            history.shift();
+        }
+        history.push({ question, thought, action, observation, answer });
         response.writeHead(200).end(answer);
-        history.push(inquiry);
-        history.push('Answer: ' + answer);
     } else {
         console.error(`${url} is 404!`)
         response.writeHead(404);

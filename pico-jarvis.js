@@ -154,7 +154,7 @@ async function lookup(question, statement) {
 }
 
 async function geocode(location) {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${location}&count=1&format=json`
+    const url = `http://geocoding-api.open-meteo.com/v1/search?name=${location}&count=1&format=json`
     const response = await fetch(url);
     const { results } = await response.json();
     return results.pop();

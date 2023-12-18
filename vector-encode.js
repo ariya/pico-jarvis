@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const EMBEDDING_MODEL = 'Xenova/paraphrase-MiniLM-L3-v2';
 
 (async () => {

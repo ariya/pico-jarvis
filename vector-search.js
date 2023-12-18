@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { readPdfPages } = require('pdf-text-reader');
 
 const FEATURE_MODEL = 'Xenova/paraphrase-MiniLM-L3-v2';

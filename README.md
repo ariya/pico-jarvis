@@ -7,6 +7,9 @@ First, you need to run the [API server](https://github.com/ggerganov/llama.cpp/b
 ./server -m /path/to/mistral-7b-openorca.Q4_K_M.gguf
 ```
 
+(For a quicker response with potentially reduced accuracy, consider using [Phi 2](https://huggingface.co/TheBloke/phi-2-GGUF) ` Q5_K_M`).
+
+
 To launch Pico Jarvis, you need [Node.js](https://nodejs.org/) v18 or later:
 ```
 npm install
@@ -15,16 +18,19 @@ npm start
 
 and then open `localhost:5000`.
 
-Try the following questions:
+Ask the following questions:
 
 * Who wrote the Canon of Medicine?
-* Who is Elon Musk?
-* What is the native language of Mr. Spock?
-* Name Indonesia #1 tourist destination
-* Which US state starts with G?
-* What is the atomic number of Magnesium?
 * Is ramen typically eaten in Egypt?
 * Who directed the Dark Knight movie?
+* Name Indonesia #1 tourist destination!
+
+<details>
+<summary>(and some more to try)</summary>
+
+* What is the native language of Mr. Spock?
+* Which US state starts with G?
+* What is the atomic number of Magnesium?
 * Where do we find kangoroo?
 * Who is the father of Luke Skywalker?
 * In which country Mandarin is spoken?
@@ -37,12 +43,12 @@ Try the following questions:
 * Who is the fictional spy 007?
 * Which country is known for IKEA?
 
-and other questions solved by searching the PDF document:
+</details>
+
+Meanwhile, questions related the solar system will be answered by searching the PDF document:
 
 * How many planets are there in our solar system?
-* Name them all!
 * Is Pluto a planet?
-* List all the terrestrial planets
 * When was solar system formed?
 * Which materials made up the gas giants?
 * How far is Proxima Centauri?

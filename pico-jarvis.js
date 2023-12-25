@@ -268,14 +268,17 @@ async function act(question, action, observation, answer) {
 
     if (name === 'lookup') {
         const result = await lookup(question, observation);
-        return result ? result : answer;
+        const reobservation = observation;
+        const note = result ? result : answer;
+        return { reobservation, note };
     }
 
     if (name === 'weather') {
         const condition = await weather(arg);
         const { summary } = condition;
         source = `Weather API: ${JSON.stringify(condition)}`;
-        return summary;
+        const reobservation = summary;
+        return { reobservation };
     }
 
     console.error('Not recognized action', name, arg);
@@ -283,7 +286,7 @@ async function act(question, action, observation, answer) {
 
 const capitalize = (str) => str[0].toUpperCase() + str.slice(1);
 
-const flatten = (parts) => Object.keys(parts).map(k => `${capitalize(k)}: ${parts[k]}`).join('\n');
+const flatten = (parts) => Object.keys(parts).filter(k => parts[k]).map(k => `${capitalize(k)}: ${parts[k]}`).join('\n');
 
 const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history.';
 
@@ -297,15 +300,17 @@ async function reason(history, question) {
         return { thought, action: 'lookup: ' + question, observation, answer };
     }
 
-    const note = await act(question, action, observation, answer);
-    if (!note) {
+    const result = await act(question, action, observation, answer);
+    if (!result) {
         return { thought, action, observation, answer: 'Unable to answer this!' };
     }
+    const { reobservation, note } = result;
 
-    const reprompt = prompt + '\n' + flatten({ thought, action, observation, answer: note });
+    const reprompt = prompt + '\n' + flatten({ thought, action, observation: reobservation, answer: note });
     const final = await llama(reprompt);
     return parse(reprompt + final);
 }
+
 
 const history = [];
 

@@ -128,7 +128,7 @@ async function lookup(question, hint) {
 
     source = reference = 'From my memory.';
 
-    const candidates = await search(hint, document);
+    const candidates = await search(question + ' ' + hint, document);
     const best = candidates.slice(0, 1).shift();
     if (best.score < MIN_SCORE) {
         return null;
@@ -143,10 +143,9 @@ async function lookup(question, hint) {
 
     const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context) + '\n\n' + 'Question: ' + question;
     const output = await llama(input);
-    const { observation, answer } = parse(output);
+    const { answer } = parse(output);
 
-    const terms = observation || hint;
-    const refs = await search(terms, relevants);
+    const refs = await search(question + ' ' + (answer || hint), relevants);
     const top = refs.slice(0, 1).pop();
 
     if (top.score > MIN_SCORE) {

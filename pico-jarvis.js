@@ -120,6 +120,7 @@ const MIN_SCORE = 0.4;
 
 const ascending = (x, y) => x - y;
 const dedupe = (numbers) => [...new Set(numbers)];
+const normalize = (str) => str.replace(/[.?]/g, '');
 
 async function lookup(question, hint) {
     if (document.length === 0) {
@@ -128,7 +129,7 @@ async function lookup(question, hint) {
 
     source = reference = 'From my memory.';
 
-    const candidates = await search(question + ' ' + hint, document);
+    const candidates = await search(normalize(`${question} ${hint}`), document);
     const best = candidates.slice(0, 1).shift();
     if (best.score < MIN_SCORE) {
         return null;
@@ -145,7 +146,7 @@ async function lookup(question, hint) {
     const output = await llama(input);
     const { answer } = parse(output);
 
-    const refs = await search(question + ' ' + (answer || hint), relevants);
+    const refs = await search(normalize(question + ' ' + (answer || hint)), relevants);
     const top = refs.slice(0, 1).pop();
 
     if (top.score > MIN_SCORE) {

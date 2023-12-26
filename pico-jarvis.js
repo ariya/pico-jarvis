@@ -72,7 +72,7 @@ Think step by step. Always specify the full steps: Thought, Action, Observation,
 Use Thought to describe your thoughts about the question you have been asked.
 Use Action to specify the key search terms.
 Observation will be the result of running the action.
-Finally at the end, state the Answer.
+Finally at the end, state the Answer in the same language as the original Question.
 
 Here is the document:
 
@@ -213,7 +213,7 @@ For Action, choose exactly one the following:
 - lookup: terms
 
 Observation will be the result of running those actions.
-Finally at the end, state the Answer.
+Finally at the end, state the Answer in the same language as the original Question.
 
 Here are some sample sessions.
 

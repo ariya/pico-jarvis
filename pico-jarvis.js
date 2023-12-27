@@ -340,10 +340,10 @@ async function handler(request, response) {
             return;
         }
         console.log('Waiting for Llama...');
-        const { thought, action, observation, answer } = await reason(history, question);
         while (history.length > 3) {
             history.shift();
         }
+        const { thought, action, observation, answer } = await reason(history, question);
         history.push({ question, thought, action, observation, answer });
         response.writeHead(200).end(answer);
     } else {

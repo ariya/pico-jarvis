@@ -192,8 +192,7 @@ async function llama(prompt) {
         prompt,
         stop,
         n_predict: 200,
-        temperature: 0,
-        top_k: 20
+        temperature: 0
     });
     const request = { method, headers, body };
     const response = await fetch(LLAMA_API_URL, request);

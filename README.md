@@ -2,12 +2,18 @@
 
 ![Screenshot](screenshot.png)
 
+This repository contains the source code for the Retrieval-augmented Generation (RAG) technique, as described in the following articles:
+
+* [Part 1: Getting started, Chain of Thought](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-1-ariya-hidayat-pcygc/)
+* [Part 2: Reason-Act, multi-turn conversation](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-2-ariya-hidayat-plynf/)
+* [Part 3: PDF ingestion, vector search](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-3-ariya-hidayat-zchec)
+
 First, you need to run the [API server](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md) of [llama.cpp](https://github.com/ggerganov/llama.cpp) with [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF), e.g.:
 ```
 ./server -m /path/to/mistral-7b-openorca.Q4_K_M.gguf
 ```
 
-(For a quicker response with potentially reduced accuracy, consider using [Phi 2](https://huggingface.co/TheBloke/phi-2-GGUF) ` Q5_K_M`).
+(For a quicker response with potentially reduced accuracy, consider using [Phi 2](https://huggingface.co/TheBloke/phi-2-GGUF) `Q5_K_M`).
 
 
 To launch Pico Jarvis, you need [Node.js](https://nodejs.org/) v18 or later:
@@ -59,8 +65,3 @@ If you get an API key for [OpenWeatherMap](https://api.openweathermap.org) and s
 * What is the current temperature in Palo Alto?
 * Is it currently cloudy in Seattle?
 
-
-# Write up
-
-* [Part 1](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-1-ariya-hidayat-pcygc/)
-* [Part 2](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-2-ariya-hidayat-plynf/)

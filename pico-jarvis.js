@@ -301,7 +301,7 @@ async function reason(history, question) {
 
     const result = await act(question, action, observation, answer);
     if (!result) {
-        return { thought, action, observation, answer: 'Unable to answer this!' };
+        return { thought, action: 'lookup: ' + question, observation, answer };
     }
     const { reobservation, note } = result;
 

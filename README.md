@@ -53,11 +53,13 @@ Ask the following questions:
 
 Meanwhile, questions related the solar system will be answered by searching the PDF document:
 
-* How many planets are there in our solar system?
-* Is Pluto a planet?
-* When was solar system formed?
-* Which materials made up the gas giants?
-* How far is Proxima Centauri?
+* What is a dwarf planet?
+* Give an example!
+* List all terrestrial planets
+* Which is the closest to the Sun?
+* Which planet known as the red one?
+* What materials compose the gas giants?
+* Explain the heliopause
 
 If you get an API key for [OpenWeatherMap](https://api.openweathermap.org) and supply it as `OPENWEATHERMAP_API_KEY` environment variable, try to ask the following:
 

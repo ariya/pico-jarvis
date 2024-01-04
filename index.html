@@ -83,19 +83,21 @@
 
             const tests = [
                 'Who is the CEO of Google?',
-                'How many planets are there in our solar system?',
-                'Name them all!',
-                'Is Pluto not a planet?',
-                'Which planet is the largest?',
-                'List all its moons!',
-                'How far is Proxima Centauri?',
+                'What is a dwarf planet?',
+                'Give an example!',
+                'List all terrestrial planets',
+                'Which is the closest to the Sun?',
+                'Which planet known as the red one?',
                 'When was solar system formed?',
-                'What materials compose the gas giants?'
+                'What materials compose the gas giants?',
+                'Explain the heliopause'
             ];
 
+            const DELAY = 5 * 1000;
+
             false && tests.forEach((test, index) => {
-                setTimeout(() => { ask(test) }, index * 4000)
-                setTimeout(() => { ask('!source') }, index * 4000 + 3500)
+                setTimeout(() => { ask(test) }, index * DELAY);
+                setTimeout(() => { ask('!source') }, index * DELAY + (DELAY - 1000));
             });
         });
     </script>

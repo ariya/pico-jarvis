@@ -44,7 +44,6 @@ const vectorize = async (text) => {
 
     const chunks = split(text);
 
-    const start = Date.now();
     const result = [];
     for (let index = 0; index < chunks.length; ++index) {
         const { offset } = chunks[index];
@@ -54,10 +53,6 @@ const vectorize = async (text) => {
         const vector = output[0].data;
         result.push({ index, offset, sentence, vector });
     }
-    const elapsed = Date.now() - start;
-
-    if (result.length > 1) console.log('Finished computing the vectors for', result.length, 'sentences in', elapsed, 'ms');
-
     return result;
 }
 
@@ -348,13 +343,22 @@ const paginate = (entries, pagination) => entries.map(entry => {
     return { page, ...entry };
 });
 
-(async () => {
-    console.log('Processing the PDF file. Please wait...');
-    const input = await readPdfPages({ url: './SolarSystem.pdf' });
+const ingest = async (url) => {
+    console.log('INGEST:');
+    const input = await readPdfPages({ url });
+    console.log(' url:', url);
     const pages = input.map((page, number) => { return { number, content: page.lines.join(' ') } });
+    console.log(' page count:', pages.length);
     const pagination = sequence(pages.length).map(k => pages.slice(0, k + 1).reduce((loc, page) => loc + page.content.length, 0))
     const text = pages.map(page => page.content).join(' ');
+    const start = Date.now();
     document = paginate(await vectorize(text), pagination);
+    const elapsed = Date.now() - start;
+    console.log(' vectorization time:', elapsed, 'ms');
+    return document;
+}
 
+(async () => {
+    document = await ingest('./SolarSystem.pdf');
     http.createServer(handler).listen(5000);
 })();

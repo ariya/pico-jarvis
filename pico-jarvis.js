@@ -61,6 +61,16 @@ const vectorize = async (text) => {
     return result;
 }
 
+const encode = async (sentence) => {
+    const transformers = await import('@xenova/transformers');
+    const { pipeline } = transformers;
+    const extractor = await pipeline('feature-extraction', FEATURE_MODEL, { quantized: true });
+
+    const output = await extractor([sentence], { pooling: 'mean', normalize: true });
+    const vector = output[0].data;
+    return vector;
+}
+
 
 const LOOKUP_PROMPT = `You are an expert in retrieving information.
 You are given a reference document, and then you respond to a question.
@@ -86,7 +96,7 @@ let source = 'Dunno';
 async function search(q, document, top_k = 3) {
     const { cos_sim } = await import('@xenova/transformers');
 
-    const { vector } = (await vectorize(q)).pop();
+    const vector = await encode(q);
     const matches = document.map((entry) => {
         const score = cos_sim(vector, entry.vector);
         // console.log(`Line ${entry.index + 1} ${Math.round(100 * score)}%: ${entry.sentence}`);
@@ -106,7 +116,6 @@ const MIN_SCORE = 0.4;
 
 const ascending = (x, y) => x - y;
 const dedupe = (numbers) => [...new Set(numbers)];
-const normalize = (str) => str.replace(/[.?]/g, '');
 
 async function lookup(question, hint) {
     if (document.length === 0) {
@@ -115,7 +124,7 @@ async function lookup(question, hint) {
 
     source = reference = 'From my memory.';
 
-    const candidates = await search(normalize(`${question} ${hint}`), document);
+    const candidates = await search(question + ' ' + hint, document);
     const best = candidates.slice(0, 1).shift();
     if (best.score < MIN_SCORE) {
         return null;
@@ -132,7 +141,7 @@ async function lookup(question, hint) {
     const output = await llama(input);
     const { answer } = parse(input + output);
 
-    const refs = await search(normalize(answer || hint), relevants);
+    const refs = await search(answer || hint, relevants);
     const top = refs.slice(0, 1).pop();
 
     if (top.score > MIN_SCORE) {

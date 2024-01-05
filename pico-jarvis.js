@@ -4,7 +4,7 @@ const { readPdfPages } = require('pdf-text-reader');
 
 const LLAMA_API_URL = process.env.LLAMA_API_URL || 'http://127.0.0.1:8080/completion';
 
-const FEATURE_MODEL = 'Xenova/paraphrase-MiniLM-L3-v2';
+const FEATURE_MODEL = 'Xenova/all-MiniLM-L6-v2';
 
 const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY;
 
@@ -48,7 +48,7 @@ const vectorize = async (text) => {
     const result = [];
     for (let index = 0; index < chunks.length; ++index) {
         const { offset } = chunks[index];
-        const block = chunks.slice(index, index + 4).map(({ text }) => text).join(' ');
+        const block = chunks.slice(index, index + 3).map(({ text }) => text).join(' ');
         const sentence = block;
         const output = await extractor([sentence], { pooling: 'mean', normalize: true });
         const vector = output[0].data;

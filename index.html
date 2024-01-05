@@ -48,7 +48,7 @@
                 }
             }
 
-            function ask(question) {
+            function ask(question, completed) {
                 message('human', question);
                 $('prompt').blur();
                 const url = '/chat?' + encodeURIComponent(question);
@@ -61,6 +61,7 @@
                     console.log('Answer:', answer);
                     message('assistant', answer);
                     focusInput();
+                    completed && completed(answer);
                 }).catch(error => {
                     message('panic', error);
                 });
@@ -93,12 +94,17 @@
                 'Explain the heliopause'
             ];
 
-            const DELAY = 5 * 1000;
+            function verify() {
+                const question = tests.shift();
+                if (question && question.length > 0) {
+                    ask(question, (answer) => {
+                        setTimeout(() => { ask('!source') }, 1000);
+                        setTimeout(verify, 2000);
+                    });
+                }
+            }
 
-            false && tests.forEach((test, index) => {
-                setTimeout(() => { ask(test) }, index * DELAY);
-                setTimeout(() => { ask('!source') }, index * DELAY + (DELAY - 1000));
-            });
+            // setTimeout(verify, 1000);
         });
     </script>
 

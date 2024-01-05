@@ -287,11 +287,9 @@ const capitalize = (str) => str[0].toUpperCase() + str.slice(1);
 
 const flatten = (parts) => Object.keys(parts).filter(k => parts[k]).map(k => `${capitalize(k)}: ${parts[k]}`).join('\n');
 
-const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history:\n';
+const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history.';
 
-const qa = ({ question, answer }) => `* ${question} ${answer}`;
-
-const context = (history) => (history.length > 0) ? HISTORY_MSG + history.map(qa).join('\n') : '';
+const context = (history) => (history.length > 0) ? HISTORY_MSG + '\n\n' + history.map(flatten).join('\n') : '';
 
 async function reason(history, question) {
     const prompt = SYSTEM_MESSAGE + '\n\n' + context(history) + '\n\nNow let us go!\n\n' + 'Question: ' + question;

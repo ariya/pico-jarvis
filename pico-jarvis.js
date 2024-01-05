@@ -253,10 +253,6 @@ function parse(text) {
 
 async function act(question, action, observation, answer) {
     const sep = action.indexOf(':');
-    if (sep < 0) {
-        console.error('Invalid action', action);
-        return null;
-    }
     const name = action.substring(0, sep);
     const arg = action.substring(sep + 1).trim();
 
@@ -275,7 +271,9 @@ async function act(question, action, observation, answer) {
         return { reobservation };
     }
 
+    // fallback to a manual lookup
     console.error('Not recognized action', name, arg);
+    return await act(question, 'lookup: ' + question, observation, answer);
 }
 
 const capitalize = (str) => str[0].toUpperCase() + str.slice(1);

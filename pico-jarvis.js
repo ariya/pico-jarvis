@@ -63,35 +63,21 @@ const vectorize = async (text) => {
 
 
 const LOOKUP_PROMPT = `You are an expert in retrieving information.
-You are given the following document, and then you respond to a query.
-You run in a process of Question, Thought, Observation, Answer.
+You are given a reference document, and then you respond to a question.
 Avoid stating your personal opinion. Avoid making other commentary.
+Think step by step.
 
-Think step by step. Always specify the full steps: Thought, Action, Observation, and Answer.
-
-Use Thought to describe your thoughts about the question you have been asked.
-Use Action to specify the key search terms.
-Observation will be the result of running the action.
-Finally at the end, state the Answer in the same language as the original Question.
-
-Here is the document:
+Here is the reference document:
 
 {{CONTEXT}}
 
-(End of document)
+(End of reference document)
 
+Now it is time to use the above document exclusively to answer this.
 
-Here is a sample session.
-
-Question: Which star is the closest to our solar system?
-Thought: Let me use the above document to find the closest star.
-Observation: The closest star to our solar system is Proxima Centauri.
-Answer: Proxima Centauri.
-
-And now it's your turn.
-
-
-`;
+Question: {{QUESTION}}
+Thought: Let us the above reference document to find the answer.
+Answer:`;
 
 let document = [];
 let reference = 'Nothing yet';
@@ -142,11 +128,11 @@ async function lookup(question, hint) {
     console.log('To formulate an answer, here is the context:');
     console.log(context);
 
-    const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context) + '\n\n' + 'Question: ' + question;
+    const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context).replace('{{QUESTION}}', question);
     const output = await llama(input);
     const { answer } = parse(output);
 
-    const refs = await search(normalize(question + ' ' + (answer || hint)), relevants);
+    const refs = await search(normalize(answer || hint), relevants);
     const top = refs.slice(0, 1).pop();
 
     if (top.score > MIN_SCORE) {

@@ -130,7 +130,7 @@ async function lookup(question, hint) {
 
     const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context).replace('{{QUESTION}}', question);
     const output = await llama(input);
-    const { answer } = parse(output);
+    const { answer } = parse(input + output);
 
     const refs = await search(normalize(answer || hint), relevants);
     const top = refs.slice(0, 1).pop();

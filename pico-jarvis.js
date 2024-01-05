@@ -344,7 +344,10 @@ async function handler(request, response) {
         while (history.length > 3) {
             history.shift();
         }
+        const start = Date.now();
         const { thought, action, observation, answer } = await reason(history, question);
+        const elapsed = Date.now() - start;
+        console.log('Responded in', elapsed, 'ms');
         history.push({ question, thought, action, observation, answer });
         response.writeHead(200).end(answer);
     } else {

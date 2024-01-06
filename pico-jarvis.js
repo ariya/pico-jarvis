@@ -221,13 +221,7 @@ Question: How's the temperature in Berlin?
 Thought: This is related to weather and I always use weather action.
 Action: weather: Berlin
 Observation: Cloudy at 17 degrees Celcius.
-Answer: 17 degrees Celcius.
-
-Question: Who painted Mona Lisa?
-Thought: This is about general knowledge, I can recall the answer from my memory.
-Action: lookup: painter of Mona Lisa.
-Observation: Mona Lisa was painted by Leonardo da Vinci.
-Answer: Leonardo da Vinci painted Mona Lisa.`;
+Answer: 17 degrees Celcius.`;
 
 function parse(text) {
     const parts = {};
@@ -283,7 +277,7 @@ const HISTORY_MSG = 'Before formulating a thought, consider the following conver
 const context = (history) => (history.length > 0) ? HISTORY_MSG + '\n\n' + history.map(flatten).join('\n') : '';
 
 async function reason(history, question) {
-    const prompt = SYSTEM_MESSAGE + '\n\n' + context(history) + '\n\nNow let us go!\n\n' + 'Question: ' + question;
+    const prompt = SYSTEM_MESSAGE + '\n\n' + context(history) + '\n\nNow it is your turn to answer the following!\n\n' + 'Question: ' + question;
     const response = await llama(prompt);
     const { thought, action, observation, answer } = parse(prompt + response);
     if (!action) {

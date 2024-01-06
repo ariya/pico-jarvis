@@ -54,12 +54,12 @@ Ask the following questions:
 Meanwhile, questions related the solar system will be answered by searching the PDF document:
 
 * What is a dwarf planet?
-* Give an example!
-* List all terrestrial planets
-* Which is the closest to the Sun?
 * Which planet known as the red one?
 * What materials compose the gas giants?
+* How about the ice giants?
 * Explain the heliopause
+* When did Voyager 2 enter the interstellar space?
+* How about Voyager 1?
 
 If you get an API key for [OpenWeatherMap](https://api.openweathermap.org) and supply it as `OPENWEATHERMAP_API_KEY` environment variable, try to ask the following:
 

@@ -61,52 +61,76 @@ const weather = async (location) => {
     return { summary, description, temp, humidity };
 }
 
+const ingest = async (url) => {
 
-const isPunctuator = (ch) => (ch === '.') || (ch === '!') || (ch === '?');
-const isWhiteSpace = (ch) => (ch === ' ') || (ch === '\n') || (ch === '\t');
+    const sequence = (N) => Array.from({ length: N }, (_, i) => i);
 
-const split = (text) => {
-    const chunks = [];
-    let str = '';
-    let offset = 0;
-    for (let i = 0; i < text.length; ++i) {
-        const ch1 = text[i];
-        const ch2 = text[i + 1];
-        if (isPunctuator(ch1) && isWhiteSpace(ch2)) {
-            str += ch1;
-            if (str.slice(-5) !== 'bill.') {
-                const text = str.trim();
-                chunks.push({ offset, text });
-                str = '';
-                offset = i + 1;
-                continue;
+    const paginate = (entries, pagination) => entries.map(entry => {
+        const { offset } = entry;
+        const page = pagination.findIndex(i => i > offset);
+        return { page, ...entry };
+    });
+
+    const isPunctuator = (ch) => (ch === '.') || (ch === '!') || (ch === '?');
+    const isWhiteSpace = (ch) => (ch === ' ') || (ch === '\n') || (ch === '\t');
+
+    const split = (text) => {
+        const chunks = [];
+        let str = '';
+        let offset = 0;
+        for (let i = 0; i < text.length; ++i) {
+            const ch1 = text[i];
+            const ch2 = text[i + 1];
+            if (isPunctuator(ch1) && isWhiteSpace(ch2)) {
+                str += ch1;
+                if (str.slice(-5) !== 'bill.') {
+                    const text = str.trim();
+                    chunks.push({ offset, text });
+                    str = '';
+                    offset = i + 1;
+                    continue;
+                }
             }
+            str += ch1;
         }
-        str += ch1;
+        if (str.length > 0) {
+            chunks.push({ offset, text: str.trim() });
+        }
+        return chunks;
     }
-    if (str.length > 0) {
-        chunks.push({ offset, text: str.trim() });
+
+    const vectorize = async (text) => {
+        const transformers = await import('@xenova/transformers');
+        const { pipeline } = transformers;
+        const extractor = await pipeline('feature-extraction', FEATURE_MODEL, { quantized: true });
+
+        const chunks = split(text);
+
+        const result = [];
+        for (let index = 0; index < chunks.length; ++index) {
+            const { offset } = chunks[index];
+            const block = chunks.slice(index, index + 3).map(({ text }) => text).join(' ');
+            const sentence = block;
+            const output = await extractor([sentence], { pooling: 'mean', normalize: true });
+            const vector = output[0].data;
+            result.push({ index, offset, sentence, vector });
+        }
+        return result;
     }
-    return chunks;
-}
 
-const vectorize = async (text) => {
-    const transformers = await import('@xenova/transformers');
-    const { pipeline } = transformers;
-    const extractor = await pipeline('feature-extraction', FEATURE_MODEL, { quantized: true });
 
-    const chunks = split(text);
-
-    const result = [];
-    for (let index = 0; index < chunks.length; ++index) {
-        const { offset } = chunks[index];
-        const block = chunks.slice(index, index + 3).map(({ text }) => text).join(' ');
-        const sentence = block;
-        const output = await extractor([sentence], { pooling: 'mean', normalize: true });
-        const vector = output[0].data;
-        result.push({ index, offset, sentence, vector });
-    }
-    return result;
+    console.log('INGEST:');
+    const input = await readPdfPages({ url });
+    console.log(' url:', url);
+    const pages = input.map((page, number) => { return { number, content: page.lines.join(' ') } });
+    console.log(' page count:', pages.length);
+    const pagination = sequence(pages.length).map(k => pages.slice(0, k + 1).reduce((loc, page) => loc + page.content.length, 0))
+    const text = pages.map(page => page.content).join(' ');
+    const start = Date.now();
+    document = paginate(await vectorize(text), pagination);
+    const elapsed = Date.now() - start;
+    console.log(' vectorization time:', elapsed, 'ms');
+    return document;
 }
 
 const encode = async (sentence) => {
@@ -342,29 +366,6 @@ async function handler(request, response) {
         response.writeHead(404);
         response.end();
     }
-}
-
-const sequence = (N) => Array.from({ length: N }, (_, i) => i);
-
-const paginate = (entries, pagination) => entries.map(entry => {
-    const { offset } = entry;
-    const page = pagination.findIndex(i => i > offset);
-    return { page, ...entry };
-});
-
-const ingest = async (url) => {
-    console.log('INGEST:');
-    const input = await readPdfPages({ url });
-    console.log(' url:', url);
-    const pages = input.map((page, number) => { return { number, content: page.lines.join(' ') } });
-    console.log(' page count:', pages.length);
-    const pagination = sequence(pages.length).map(k => pages.slice(0, k + 1).reduce((loc, page) => loc + page.content.length, 0))
-    const text = pages.map(page => page.content).join(' ');
-    const start = Date.now();
-    document = paginate(await vectorize(text), pagination);
-    const elapsed = Date.now() - start;
-    console.log(' vectorization time:', elapsed, 'ms');
-    return document;
 }
 
 (async () => {

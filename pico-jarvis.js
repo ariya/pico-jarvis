@@ -50,13 +50,21 @@ const weather = async (location) => {
     if (!OPENWEATHERMAP_API_KEY || OPENWEATHERMAP_API_KEY.length < 32) {
         throw new Error(WEATHER_ERROR_MSG);
     }
+    console.log('WEATHER:');
+    console.log(' location:', location);
     const { latitude, longitude } = await geocode(location);
+    console.log(' latitude:', latitude);
+    console.log(' longitude:', longitude);
     const url = `https://api.openweathermap.org/data/2.5/weather?units=metric&lat=${latitude}&lon=${longitude}&appid=${OPENWEATHERMAP_API_KEY}`
     const response = await fetch(url);
     const data = await response.json();
     const { name, weather, main } = data;
     const { description } = weather[0];
     const { temp, humidity } = main;
+    console.log(' name:', name);
+    console.log(' description:', description);
+    console.log(' temp:', temp);
+    console.log(' humidity:', humidity);
     const summary = `The current weather in ${name} is ${description} at ${temp} °C and humidity ${humidity}%`;
     return { summary, description, temp, humidity };
 }
@@ -172,9 +180,6 @@ Question: {{QUESTION}}
 Thought: Let us the above reference document to find the answer.
 Answer:`;
 
-let reference = 'Nothing yet';
-let source = 'Dunno';
-
 const lookup = async (document, question, hint) => {
 
     const encode = async (sentence) => {
@@ -215,10 +220,16 @@ const lookup = async (document, question, hint) => {
         throw new Error('Document is not indexed!');
     }
 
-    source = reference = 'From my memory.';
+    let source = 'From my memory.';
+    let reference = source;
+
+    console.log('LOOKUP:');
+    console.log(' question:', question);
+    console.log(' hint:', hint);
 
     const candidates = await search(question + ' ' + hint, document);
     const best = candidates.slice(0, 1).shift();
+    console.log(' best score:', best.score);
     if (best.score < MIN_SCORE) {
         return { result: null, source, reference };
     }
@@ -226,13 +237,14 @@ const lookup = async (document, question, hint) => {
     const indexes = dedupe(candidates.map(r => r.index)).sort(ascending);
     const relevants = document.filter(({ index }) => indexes.includes(index));
     const context = relevants.map(({ sentence }) => sentence).join(' ');
-    console.log();
-    console.log('To formulate an answer, here is the context:');
+    console.log('------- context -------');
     console.log(context);
+    console.log('-------');
 
     const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context).replace('{{QUESTION}}', question);
     const output = await llama(input);
     const { answer } = parse(input + output);
+    console.log(' answer:', answer);
 
     const refs = await search(answer || hint, relevants);
     const top = refs.slice(0, 1).pop();
@@ -240,6 +252,7 @@ const lookup = async (document, question, hint) => {
     if (top.score > MIN_SCORE) {
         reference = context;
         source = `Best source (page ${top.page + 1}, score ${Math.round(top.score * 100)}%):\n${top.sentence}`;
+        console.log(' source:', source);
     }
 
     return { result: answer, source, reference };
@@ -251,16 +264,16 @@ const act = async (document, question, action, observation, answer) => {
     const arg = action.substring(sep + 1).trim();
 
     if (name === 'lookup') {
-        const { result } = await lookup(document, question, observation);
+        const { result, source, reference } = await lookup(document, question, observation);
         const note = result ? result : answer;
-        return { note };
+        return { note, source, reference };
     }
 
     if (name === 'weather') {
         const condition = await weather(arg);
         const { summary } = condition;
-        source = `Weather API: ${JSON.stringify(condition)}`;
-        return { note: summary };
+        const source = `Weather API: ${JSON.stringify(condition)}`;
+        return { note: summary, source, reference: source };
     }
 
     // fallback to a manual lookup
@@ -309,9 +322,16 @@ const reason = async (document, history, question) => {
     const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history.';
     const context = (history) => (history.length > 0) ? HISTORY_MSG + '\n\n' + history.map(flatten).join('\n') : '';
 
+    console.log('REASON:');
+    console.log(' question:', question);
+
     const prompt = REASON_PROMPT.replace('{{CONTEXT}}', context(history)).replace('{{QUESTION}}', question);
     const response = await llama(prompt);
     const { thought, action, observation, answer } = parse(prompt + response);
+    console.log(' thought:', thought);
+    console.log(' action:', action);
+    console.log(' observation:', observation);
+    console.log(' answer:', answer);
     if (!action) {
         return { thought, action: 'lookup: ' + question, observation, answer };
     }
@@ -320,16 +340,37 @@ const reason = async (document, history, question) => {
     if (!result) {
         return { thought, action: 'lookup: ' + question, observation, answer };
     }
-    const { note } = result;
+    const { note, source, reference } = result;
+    console.log(' note:', note);
 
+    console.log('RESPONSE:');
+    console.log(' question:', question);
+    console.log(' thought:', thought);
+    console.log(' action:', action);
+    console.log(' observation:', note);
     const reprompt = prompt + '\n' + flatten({ thought, action, observation: note }) + '\nAnswer:';
     const final = await llama(reprompt);
+    console.log(' final:', final);
     return { ...parse(reprompt + final), source, reference };
 }
 
 (async () => {
-    const history = [];
     const document = await ingest('./SolarSystem.pdf');
+
+    let state = {
+        history: [],
+        source: 'Dunno',
+        reference: 'Nothing yet'
+    };
+
+    const command = (key, response) => {
+        const value = state[key];
+        if (value) {
+            response.writeHead(200).end(JSON.stringify(state.reference));
+            return true;
+        }
+        return false;
+    }
 
     const server = http.createServer(async (request, response) => {
         const { url } = request;
@@ -343,27 +384,29 @@ const reason = async (document, history, question) => {
             const { search } = parsedUrl;
             const question = decodeURIComponent(search.substring(1));
             if (question === '!source') {
-                response.writeHead(200).end(source);
+                response.writeHead(200).end(state.source);
                 return;
             }
             if (question === '!reference') {
-                response.writeHead(200).end(reference);
+                response.writeHead(200).end(state.reference);
                 return;
             }
             if (question === '!reset') {
-                history.length = 0;
+                state.history.length = 0;
                 response.writeHead(200).end('Multi-turn conversation is reset.');
                 return;
             }
-            console.log('Waiting for Llama...');
-            while (history.length > 3) {
-                history.shift();
+            while (state.history.length > 3) {
+                state.history.shift();
             }
+            console.log();
             const start = Date.now();
-            const { thought, action, observation, answer } = await reason(document, history, question);
+            const { thought, action, observation, answer, source, reference } = await reason(document, state.history, question);
             const elapsed = Date.now() - start;
+            state.source = source;
+            state.reference = reference;
             console.log('Responded in', elapsed, 'ms');
-            history.push({ question, thought, action, observation, answer });
+            state.history.push({ question, thought, action, observation, answer });
             response.writeHead(200).end(answer);
         } else {
             console.error(`${url} is 404!`)

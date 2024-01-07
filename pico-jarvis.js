@@ -36,6 +36,32 @@ const llama = async (prompt, attempt = 1) => {
     return await llama(prompt, attempt + 1);
 }
 
+const weather = async (location) => {
+    const WEATHER_ERROR_MSG = `Unable to retrieve weather information.
+    Please supply a valid API key for OpenWeatherMap as OPENWEATHERMAP_API_KEY environment variable.`
+
+    const geocode = async (location) => {
+        const url = `http://geocoding-api.open-meteo.com/v1/search?name=${location}&count=1&format=json`
+        const response = await fetch(url);
+        const { results } = await response.json();
+        return results.pop();
+    }
+
+    if (!OPENWEATHERMAP_API_KEY || OPENWEATHERMAP_API_KEY.length < 32) {
+        throw new Error(WEATHER_ERROR_MSG);
+    }
+    const { latitude, longitude } = await geocode(location);
+    const url = `https://api.openweathermap.org/data/2.5/weather?units=metric&lat=${latitude}&lon=${longitude}&appid=${OPENWEATHERMAP_API_KEY}`
+    const response = await fetch(url);
+    const data = await response.json();
+    const { name, weather, main } = data;
+    const { description } = weather[0];
+    const { temp, humidity } = main;
+    const summary = `The current weather in ${name} is ${description} at ${temp} °C and humidity ${humidity}%`;
+    return { summary, description, temp, humidity };
+}
+
+
 const isPunctuator = (ch) => (ch === '.') || (ch === '!') || (ch === '?');
 const isWhiteSpace = (ch) => (ch === ' ') || (ch === '\n') || (ch === '\t');
 
@@ -172,31 +198,6 @@ async function lookup(question, hint) {
     }
 
     return answer;
-}
-
-async function geocode(location) {
-    const url = `http://geocoding-api.open-meteo.com/v1/search?name=${location}&count=1&format=json`
-    const response = await fetch(url);
-    const { results } = await response.json();
-    return results.pop();
-}
-
-const WEATHER_ERROR_MSG = `Unable to retrieve weather information.
-Please supply a valid API key for OpenWeatherMap as OPENWEATHERMAP_API_KEY environment variable.`
-
-async function weather(location) {
-    if (!OPENWEATHERMAP_API_KEY || OPENWEATHERMAP_API_KEY.length < 32) {
-        throw new Error(WEATHER_ERROR_MSG);
-    }
-    const { latitude, longitude } = await geocode(location);
-    const url = `https://api.openweathermap.org/data/2.5/weather?units=metric&lat=${latitude}&lon=${longitude}&appid=${OPENWEATHERMAP_API_KEY}`
-    const response = await fetch(url);
-    const data = await response.json();
-    const { name, weather, main } = data;
-    const { description } = weather[0];
-    const { temp, humidity } = main;
-    const summary = `The current weather in ${name} is ${description} at ${temp} °C and humidity ${humidity}%`;
-    return { summary, description, temp, humidity };
 }
 
 const SYSTEM_MESSAGE = `You run in a process of Question, Thought, Action, Observation.

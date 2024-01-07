@@ -9,13 +9,13 @@ This repository contains the source code for the Retrieval-augmented Generation 
 * [Part 3: PDF ingestion, vector search](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-3-ariya-hidayat-zchec)
 * [Bonus: RAG with SLM (Small Language Model)](https://www.linkedin.com/pulse/phi-2-rag-emergence-small-language-model-slm-ariya-hidayat-2w6ac)
 
-First, you need to run the [API server](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md) of [llama.cpp](https://github.com/ggerganov/llama.cpp) with [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF), e.g.:
+First, you need to run the [API server](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md) of [llama.cpp](https://github.com/ggerganov/llama.cpp) with [Phi 2](https://huggingface.co/TheBloke/phi-2-GGUF):
+
 ```
-./server -m /path/to/mistral-7b-openorca.Q4_K_M.gguf
+./server -m /path/to/phi-2.Q4_K_M.gguf
 ```
 
-(For a quicker response with potentially reduced accuracy, consider using [Phi 2](https://huggingface.co/TheBloke/phi-2-GGUF) `Q5_K_M`).
-
+(For a slower response but with improved accuracy, consider using [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF)).
 
 To launch Pico Jarvis, you need [Node.js](https://nodejs.org/) v18 or later:
 ```

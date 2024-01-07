@@ -133,17 +133,6 @@ const ingest = async (url) => {
     return document;
 }
 
-const encode = async (sentence) => {
-    const transformers = await import('@xenova/transformers');
-    const { pipeline } = transformers;
-    const extractor = await pipeline('feature-extraction', FEATURE_MODEL, { quantized: true });
-
-    const output = await extractor([sentence], { pooling: 'mean', normalize: true });
-    const vector = output[0].data;
-    return vector;
-}
-
-
 const LOOKUP_PROMPT = `You are an expert in retrieving information.
 You are given a reference document, and then you respond to a question.
 Avoid stating your personal opinion. Avoid making other commentary.
@@ -165,31 +154,42 @@ let document = [];
 let reference = 'Nothing yet';
 let source = 'Dunno';
 
-async function search(q, document, top_k = 3) {
-    const { cos_sim } = await import('@xenova/transformers');
+const lookup = async (document, question, hint) => {
 
-    const vector = await encode(q);
-    const matches = document.map((entry) => {
-        const score = cos_sim(vector, entry.vector);
-        // console.log(`Line ${entry.index + 1} ${Math.round(100 * score)}%: ${entry.sentence}`);
-        return { score, ...entry };
-    });
+    const encode = async (sentence) => {
+        const transformers = await import('@xenova/transformers');
+        const { pipeline } = transformers;
+        const extractor = await pipeline('feature-extraction', FEATURE_MODEL, { quantized: true });
 
-    const relevants = matches.sort((d1, d2) => d2.score - d1.score).slice(0, top_k);
-    relevants.forEach(match => {
-        const { index, offset, sentence, score } = match;
-        // console.log(`  Line ${index + 1} @${offset}, match ${Math.round(100 * score)}%: ${sentence}`)
-    });
+        const output = await extractor([sentence], { pooling: 'mean', normalize: true });
+        const vector = output[0].data;
+        return vector;
+    }
 
-    return relevants;
-}
+    const search = async (q, document, top_k = 3) => {
+        const { cos_sim } = await import('@xenova/transformers');
 
-const MIN_SCORE = 0.4;
+        const vector = await encode(q);
+        const matches = document.map((entry) => {
+            const score = cos_sim(vector, entry.vector);
+            // console.log(`Line ${entry.index + 1} ${Math.round(100 * score)}%: ${entry.sentence}`);
+            return { score, ...entry };
+        });
 
-const ascending = (x, y) => x - y;
-const dedupe = (numbers) => [...new Set(numbers)];
+        const relevants = matches.sort((d1, d2) => d2.score - d1.score).slice(0, top_k);
+        relevants.forEach(match => {
+            const { index, offset, sentence, score } = match;
+            // console.log(`  Line ${index + 1} @${offset}, match ${Math.round(100 * score)}%: ${sentence}`)
+        });
 
-async function lookup(question, hint) {
+        return relevants;
+    }
+
+    const ascending = (x, y) => x - y;
+    const dedupe = (numbers) => [...new Set(numbers)];
+
+    const MIN_SCORE = 0.4;
+
     if (document.length === 0) {
         throw new Error('Document is not indexed!');
     }
@@ -199,7 +199,7 @@ async function lookup(question, hint) {
     const candidates = await search(question + ' ' + hint, document);
     const best = candidates.slice(0, 1).shift();
     if (best.score < MIN_SCORE) {
-        return null;
+        return { result: null, source, reference };
     }
 
     const indexes = dedupe(candidates.map(r => r.index)).sort(ascending);
@@ -221,7 +221,7 @@ async function lookup(question, hint) {
         source = `Best source (page ${top.page + 1}, score ${Math.round(top.score * 100)}%):\n${top.sentence}`;
     }
 
-    return answer;
+    return { result: answer, source, reference };
 }
 
 const SYSTEM_MESSAGE = `You run in a process of Question, Thought, Action, Observation.
@@ -279,7 +279,7 @@ async function act(question, action, observation, answer) {
     const arg = action.substring(sep + 1).trim();
 
     if (name === 'lookup') {
-        const result = await lookup(question, observation);
+        const { result } = await lookup(document, question, observation);
         const note = result ? result : answer;
         return { note };
     }

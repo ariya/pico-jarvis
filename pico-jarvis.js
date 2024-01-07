@@ -133,6 +133,28 @@ const ingest = async (url) => {
     return document;
 }
 
+const parse = (text) => {
+    const parts = {};
+    const MARKERS = ['Answer', 'Observation', 'Action', 'Thought'];
+    const ANCHOR = MARKERS.slice().pop();
+    const start = text.lastIndexOf(ANCHOR + ':');
+    if (start >= 0) {
+        let str = text.substr(start);
+        for (let i = 0; i < MARKERS.length; ++i) {
+            const marker = MARKERS[i];
+            const pos = str.lastIndexOf(marker + ':');
+            if (pos >= 0) {
+                const substr = str.substr(pos + marker.length + 1).trim();
+                const value = substr.split('\n').shift();
+                str = str.slice(0, pos);
+                const key = marker.toLowerCase();
+                parts[key] = value;
+            }
+        }
+    }
+    return parts;
+}
+
 const LOOKUP_PROMPT = `You are an expert in retrieving information.
 You are given a reference document, and then you respond to a question.
 Avoid stating your personal opinion. Avoid making other commentary.
@@ -224,7 +246,30 @@ const lookup = async (document, question, hint) => {
     return { result: answer, source, reference };
 }
 
-const SYSTEM_MESSAGE = `You run in a process of Question, Thought, Action, Observation.
+const act = async (document, question, action, observation, answer) => {
+    const sep = action.indexOf(':');
+    const name = action.substring(0, sep);
+    const arg = action.substring(sep + 1).trim();
+
+    if (name === 'lookup') {
+        const { result } = await lookup(document, question, observation);
+        const note = result ? result : answer;
+        return { note };
+    }
+
+    if (name === 'weather') {
+        const condition = await weather(arg);
+        const { summary } = condition;
+        source = `Weather API: ${JSON.stringify(condition)}`;
+        return { note: summary };
+    }
+
+    // fallback to a manual lookup
+    console.error('Not recognized action', name, arg);
+    return await act(question, 'lookup: ' + question, observation, answer);
+}
+
+const REASON_PROMPT = `You run in a process of Question, Thought, Action, Observation.
 
 Think step by step. Always specify the full steps: Thought, Action, Observation, and Answer.
 
@@ -249,70 +294,30 @@ Question: How's the temperature in Berlin?
 Thought: This is related to weather and I always use weather action.
 Action: weather: Berlin
 Observation: Cloudy at 17 degrees Celcius.
-Answer: 17 degrees Celcius.`;
+Answer: 17 degrees Celcius.
 
-function parse(text) {
-    const parts = {};
-    const MARKERS = ['Answer', 'Observation', 'Action', 'Thought'];
-    const ANCHOR = MARKERS.slice().pop();
-    const start = text.lastIndexOf(ANCHOR + ':');
-    if (start >= 0) {
-        let str = text.substr(start);
-        for (let i = 0; i < MARKERS.length; ++i) {
-            const marker = MARKERS[i];
-            const pos = str.lastIndexOf(marker + ':');
-            if (pos >= 0) {
-                const substr = str.substr(pos + marker.length + 1).trim();
-                const value = substr.split('\n').shift();
-                str = str.slice(0, pos);
-                const key = marker.toLowerCase();
-                parts[key] = value;
-            }
-        }
-    }
-    return parts;
-}
+{{CONTEXT}}
 
-async function act(question, action, observation, answer) {
-    const sep = action.indexOf(':');
-    const name = action.substring(0, sep);
-    const arg = action.substring(sep + 1).trim();
+Now it is your turn to answer the following!
 
-    if (name === 'lookup') {
-        const { result } = await lookup(document, question, observation);
-        const note = result ? result : answer;
-        return { note };
-    }
+Question: {{QUESTION}}`;
 
-    if (name === 'weather') {
-        const condition = await weather(arg);
-        const { summary } = condition;
-        source = `Weather API: ${JSON.stringify(condition)}`;
-        return { note: summary };
-    }
+const reason = async (document, history, question) => {
 
-    // fallback to a manual lookup
-    console.error('Not recognized action', name, arg);
-    return await act(question, 'lookup: ' + question, observation, answer);
-}
+    const capitalize = (str) => str[0].toUpperCase() + str.slice(1);
+    const flatten = (parts) => Object.keys(parts).filter(k => parts[k]).map(k => `${capitalize(k)}: ${parts[k]}`).join('\n');
 
-const capitalize = (str) => str[0].toUpperCase() + str.slice(1);
+    const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history.';
+    const context = (history) => (history.length > 0) ? HISTORY_MSG + '\n\n' + history.map(flatten).join('\n') : '';
 
-const flatten = (parts) => Object.keys(parts).filter(k => parts[k]).map(k => `${capitalize(k)}: ${parts[k]}`).join('\n');
-
-const HISTORY_MSG = 'Before formulating a thought, consider the following conversation history.';
-
-const context = (history) => (history.length > 0) ? HISTORY_MSG + '\n\n' + history.map(flatten).join('\n') : '';
-
-async function reason(history, question) {
-    const prompt = SYSTEM_MESSAGE + '\n\n' + context(history) + '\n\nNow it is your turn to answer the following!\n\n' + 'Question: ' + question;
+    const prompt = REASON_PROMPT.replace('{{CONTEXT}}', context(history)).replace('{{QUESTION}}', question);
     const response = await llama(prompt);
     const { thought, action, observation, answer } = parse(prompt + response);
     if (!action) {
         return { thought, action: 'lookup: ' + question, observation, answer };
     }
 
-    const result = await act(question, action, observation, answer);
+    const result = await act(document, question, action, observation, answer);
     if (!result) {
         return { thought, action: 'lookup: ' + question, observation, answer };
     }
@@ -322,7 +327,6 @@ async function reason(history, question) {
     const final = await llama(reprompt);
     return parse(reprompt + final);
 }
-
 
 const history = [];
 
@@ -356,7 +360,7 @@ async function handler(request, response) {
             history.shift();
         }
         const start = Date.now();
-        const { thought, action, observation, answer } = await reason(history, question);
+        const { thought, action, observation, answer } = await reason(document, history, question);
         const elapsed = Date.now() - start;
         console.log('Responded in', elapsed, 'ms');
         history.push({ question, thought, action, observation, answer });

@@ -278,7 +278,7 @@ const act = async (document, question, action, observation, answer) => {
 
     // fallback to a manual lookup
     console.error('Not recognized action', name, arg);
-    return await act(question, 'lookup: ' + question, observation, answer);
+    return await act(document, question, 'lookup: ' + question, observation, answer);
 }
 
 const REASON_PROMPT = `You run in a process of Question, Thought, Action, Observation.
@@ -332,11 +332,7 @@ const reason = async (document, history, question) => {
     console.log(' action:', action);
     console.log(' observation:', observation);
     console.log(' answer:', answer);
-    if (!action) {
-        return { thought, action: 'lookup: ' + question, observation, answer };
-    }
-
-    const result = await act(document, question, action, observation, answer);
+    const result = await act(document, question, action ? action : 'lookup: ' + question, observation, answer);
     if (!result) {
         return { thought, action: 'lookup: ' + question, observation, answer };
     }

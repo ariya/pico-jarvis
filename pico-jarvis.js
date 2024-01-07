@@ -172,7 +172,6 @@ Question: {{QUESTION}}
 Thought: Let us the above reference document to find the answer.
 Answer:`;
 
-let document = [];
 let reference = 'Nothing yet';
 let source = 'Dunno';
 
@@ -325,54 +324,56 @@ const reason = async (document, history, question) => {
 
     const reprompt = prompt + '\n' + flatten({ thought, action, observation: note }) + '\nAnswer:';
     const final = await llama(reprompt);
-    return parse(reprompt + final);
-}
-
-const history = [];
-
-async function handler(request, response) {
-    const { url } = request;
-    console.log(`Handling ${url}...`);
-    if (url === '/health') {
-        response.writeHead(200).end('OK');
-    } else if (url === '/' || url === '/index.html') {
-        response.writeHead(200, { 'Content-Type': 'text/html' });
-        response.end(fs.readFileSync('./index.html'));
-    } else if (url.startsWith('/chat')) {
-        const parsedUrl = new URL(`http://localhost/${url}`);
-        const { search } = parsedUrl;
-        const question = decodeURIComponent(search.substring(1));
-        if (question === '!source') {
-            response.writeHead(200).end(source);
-            return;
-        }
-        if (question === '!reference') {
-            response.writeHead(200).end(reference);
-            return;
-        }
-        if (question === '!reset') {
-            history.length = 0;
-            response.writeHead(200).end('Multi-turn conversation is reset.');
-            return;
-        }
-        console.log('Waiting for Llama...');
-        while (history.length > 3) {
-            history.shift();
-        }
-        const start = Date.now();
-        const { thought, action, observation, answer } = await reason(document, history, question);
-        const elapsed = Date.now() - start;
-        console.log('Responded in', elapsed, 'ms');
-        history.push({ question, thought, action, observation, answer });
-        response.writeHead(200).end(answer);
-    } else {
-        console.error(`${url} is 404!`)
-        response.writeHead(404);
-        response.end();
-    }
+    return { ...parse(reprompt + final), source, reference };
 }
 
 (async () => {
-    document = await ingest('./SolarSystem.pdf');
-    http.createServer(handler).listen(5000);
+    const history = [];
+    const document = await ingest('./SolarSystem.pdf');
+
+    const server = http.createServer(async (request, response) => {
+        const { url } = request;
+        if (url === '/health') {
+            response.writeHead(200).end('OK');
+        } else if (url === '/' || url === '/index.html') {
+            response.writeHead(200, { 'Content-Type': 'text/html' });
+            response.end(fs.readFileSync('./index.html'));
+        } else if (url.startsWith('/chat')) {
+            const parsedUrl = new URL(`http://localhost/${url}`);
+            const { search } = parsedUrl;
+            const question = decodeURIComponent(search.substring(1));
+            if (question === '!source') {
+                response.writeHead(200).end(source);
+                return;
+            }
+            if (question === '!reference') {
+                response.writeHead(200).end(reference);
+                return;
+            }
+            if (question === '!reset') {
+                history.length = 0;
+                response.writeHead(200).end('Multi-turn conversation is reset.');
+                return;
+            }
+            console.log('Waiting for Llama...');
+            while (history.length > 3) {
+                history.shift();
+            }
+            const start = Date.now();
+            const { thought, action, observation, answer } = await reason(document, history, question);
+            const elapsed = Date.now() - start;
+            console.log('Responded in', elapsed, 'ms');
+            history.push({ question, thought, action, observation, answer });
+            response.writeHead(200).end(answer);
+        } else {
+            console.error(`${url} is 404!`)
+            response.writeHead(404);
+            response.end();
+        }
+    });
+
+    const port = process.env.PORT || 5000;
+    console.log('SERVER:');
+    console.log(' port:', port);
+    server.listen(port);
 })();

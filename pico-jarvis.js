@@ -172,7 +172,7 @@ async function weather(location) {
     return { summary, description, temp, humidity };
 }
 
-async function llama(prompt) {
+async function llama(prompt, attempt = 1) {
     const method = 'POST';
     const headers = {
         'Content-Type': 'application/json'
@@ -186,9 +186,18 @@ async function llama(prompt) {
     });
     const request = { method, headers, body };
     const response = await fetch(LLAMA_API_URL, request);
-    const data = await response.json();
-    const { content } = data;
-    return content.trim();
+    if (response.ok) {
+        const data = await response.json();
+        const { content } = data;
+        return content.trim();
+    }
+    if (attempt > 3) {
+        const message = 'LLM API server does not respond properly!';
+        console.error(message);
+        return message;
+    }
+    console.error('LLM API call failure:', response.status, 'Retrying...');
+    return await llama(prompt, attempt + 1);
 }
 
 const SYSTEM_MESSAGE = `You run in a process of Question, Thought, Action, Observation.

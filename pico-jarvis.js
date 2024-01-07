@@ -258,17 +258,15 @@ async function act(question, action, observation, answer) {
 
     if (name === 'lookup') {
         const result = await lookup(question, observation);
-        const reobservation = observation;
         const note = result ? result : answer;
-        return { reobservation, note };
+        return { note };
     }
 
     if (name === 'weather') {
         const condition = await weather(arg);
         const { summary } = condition;
         source = `Weather API: ${JSON.stringify(condition)}`;
-        const reobservation = summary;
-        return { reobservation };
+        return { note: summary };
     }
 
     // fallback to a manual lookup
@@ -296,9 +294,9 @@ async function reason(history, question) {
     if (!result) {
         return { thought, action: 'lookup: ' + question, observation, answer };
     }
-    const { reobservation, note } = result;
+    const { note } = result;
 
-    const reprompt = prompt + '\n' + flatten({ thought, action, observation: reobservation, answer: note });
+    const reprompt = prompt + '\n' + flatten({ thought, action, observation: note }) + '\nAnswer:';
     const final = await llama(reprompt);
     return parse(reprompt + final);
 }

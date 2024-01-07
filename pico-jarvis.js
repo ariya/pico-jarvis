@@ -8,6 +8,33 @@ const FEATURE_MODEL = 'Xenova/all-MiniLM-L6-v2';
 
 const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY;
 
+const llama = async (prompt, attempt = 1) => {
+    const method = 'POST';
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    const stop = ['Llama:', 'User:', 'Question:'];
+    const body = JSON.stringify({
+        prompt,
+        stop,
+        n_predict: 200,
+        temperature: 0
+    });
+    const request = { method, headers, body };
+    const response = await fetch(LLAMA_API_URL, request);
+    if (response.ok) {
+        const data = await response.json();
+        const { content } = data;
+        return content.trim();
+    }
+    if (attempt > 3) {
+        const message = 'LLM API server does not respond properly!';
+        console.error(message);
+        return message;
+    }
+    console.error('LLM API call failure:', response.status, 'Retrying...');
+    return await llama(prompt, attempt + 1);
+}
 
 const isPunctuator = (ch) => (ch === '.') || (ch === '!') || (ch === '?');
 const isWhiteSpace = (ch) => (ch === ' ') || (ch === '\n') || (ch === '\t');
@@ -170,34 +197,6 @@ async function weather(location) {
     const { temp, humidity } = main;
     const summary = `The current weather in ${name} is ${description} at ${temp} °C and humidity ${humidity}%`;
     return { summary, description, temp, humidity };
-}
-
-async function llama(prompt, attempt = 1) {
-    const method = 'POST';
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-    const stop = ['Llama:', 'User:', 'Question:'];
-    const body = JSON.stringify({
-        prompt,
-        stop,
-        n_predict: 200,
-        temperature: 0
-    });
-    const request = { method, headers, body };
-    const response = await fetch(LLAMA_API_URL, request);
-    if (response.ok) {
-        const data = await response.json();
-        const { content } = data;
-        return content.trim();
-    }
-    if (attempt > 3) {
-        const message = 'LLM API server does not respond properly!';
-        console.error(message);
-        return message;
-    }
-    console.error('LLM API call failure:', response.status, 'Retrying...');
-    return await llama(prompt, attempt + 1);
 }
 
 const SYSTEM_MESSAGE = `You run in a process of Question, Thought, Action, Observation.

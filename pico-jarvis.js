@@ -60,12 +60,18 @@ const weather = async (location) => {
     const data = await response.json();
     const { name, weather, main } = data;
     const { description } = weather[0];
-    const { temp, humidity } = main;
+    const { pressure, temp, humidity } = main;
     console.log(' name:', name);
     console.log(' description:', description);
+    console.log(' pressure:', pressure);
     console.log(' temp:', temp);
     console.log(' humidity:', humidity);
-    const summary = `The current weather in ${name} is ${description} at ${temp} °C and humidity ${humidity}%`;
+    const summary = `This is the weather observation for ${name}.
+The current weather condition is ${description}.
+* barometric pressure: ${pressure} mbars.
+* temperature (in Celcius): ${Math.round(temp)} °C.
+* temperature (in Fahrenheit): ${Math.round(32 + temp * 9 / 5)} °F.
+* humidity: ${humidity}%.`;
     return { summary, description, temp, humidity };
 }
 
@@ -164,21 +170,37 @@ const parse = (text) => {
 }
 
 const LOOKUP_PROMPT = `You are an expert in retrieving information.
-You are given a reference document, and then you respond to a question.
+You are given a {{KIND}}, and then you respond to a question.
 Avoid stating your personal opinion. Avoid making other commentary.
 Think step by step.
 
-Here is the reference document:
+Here is the {{KIND}}:
 
-{{CONTEXT}}
+{{PASSAGES}}
 
-(End of reference document)
+(End of {{KIND}})
 
-Now it is time to use the above document exclusively to answer this.
+Now it is time to use the above {{KIND}} exclusively to answer this.
 
 Question: {{QUESTION}}
 Thought: Let us the above reference document to find the answer.
 Answer:`;
+
+const answer = async (kind, passages, question) => {
+    console.log('ANSWER:');
+    console.log(' question:', question);
+    console.log('------- passages -------');
+    console.log(passages);
+    console.log('-------');
+    const input = LOOKUP_PROMPT.
+        replaceAll('{{KIND}}', kind).
+        replace('{{PASSAGES}}', passages).
+        replace('{{QUESTION}}', question);
+    const output = await llama(input);
+    const response = parse(input + output);
+    console.log(' answer:', response.answer);
+    return response.answer;
+}
 
 const lookup = async (document, question, hint) => {
 
@@ -220,9 +242,6 @@ const lookup = async (document, question, hint) => {
         throw new Error('Document is not indexed!');
     }
 
-    let source = 'From my memory.';
-    let reference = source;
-
     console.log('LOOKUP:');
     console.log(' question:', question);
     console.log(' hint:', hint);
@@ -231,54 +250,44 @@ const lookup = async (document, question, hint) => {
     const best = candidates.slice(0, 1).shift();
     console.log(' best score:', best.score);
     if (best.score < MIN_SCORE) {
-        return { result: null, source, reference };
+        const FROM_MEMORY = 'From my memory.';
+        return { result: hint, source: FROM_MEMORY, reference: FROM_MEMORY };
     }
 
     const indexes = dedupe(candidates.map(r => r.index)).sort(ascending);
     const relevants = document.filter(({ index }) => indexes.includes(index));
-    const context = relevants.map(({ sentence }) => sentence).join(' ');
-    console.log('------- context -------');
-    console.log(context);
-    console.log('-------');
+    const passages = relevants.map(({ sentence }) => sentence).join(' ');
+    const result = await answer('reference document', passages, question);
 
-    const input = LOOKUP_PROMPT.replace('{{CONTEXT}}', context).replace('{{QUESTION}}', question);
-    const output = await llama(input);
-    const { answer } = parse(input + output);
-    console.log(' answer:', answer);
-
-    const refs = await search(answer || hint, relevants);
+    const refs = await search(result || hint, relevants);
     const top = refs.slice(0, 1).pop();
+    source = `Best source (page ${top.page + 1}, score ${Math.round(top.score * 100)}%):\n${top.sentence}`;
+    console.log(' source:', source);
 
-    if (top.score > MIN_SCORE) {
-        reference = context;
-        source = `Best source (page ${top.page + 1}, score ${Math.round(top.score * 100)}%):\n${top.sentence}`;
-        console.log(' source:', source);
-    }
-
-    return { result: answer, source, reference };
+    return { result, source, reference: passages };
 }
 
-const act = async (document, question, action, observation, answer) => {
+const act = async (document, question, action, observation) => {
     const sep = action.indexOf(':');
     const name = action.substring(0, sep);
     const arg = action.substring(sep + 1).trim();
 
     if (name === 'lookup') {
         const { result, source, reference } = await lookup(document, question, observation);
-        const note = result ? result : answer;
-        return { note, source, reference };
+        return { result, source, reference };
     }
 
     if (name === 'weather') {
         const condition = await weather(arg);
         const { summary } = condition;
-        const source = `Weather API: ${JSON.stringify(condition)}`;
-        return { note: summary, source, reference: source };
+        const result = await answer('weather report', summary, question);
+        const reference = `Weather API: ${JSON.stringify(condition)}`;
+        return { result, source: summary, reference };
     }
 
     // fallback to a manual lookup
     console.error('Not recognized action', name, arg);
-    return await act(document, question, 'lookup: ' + question, observation, answer);
+    return await act(document, question, 'lookup: ' + question, observation);
 }
 
 const REASON_PROMPT = `You run in a process of Question, Thought, Action, Observation.
@@ -327,27 +336,15 @@ const reason = async (document, history, question) => {
 
     const prompt = REASON_PROMPT.replace('{{CONTEXT}}', context(history)).replace('{{QUESTION}}', question);
     const response = await llama(prompt);
-    const { thought, action, observation, answer } = parse(prompt + response);
+    const steps = parse(prompt + response);
+    const { thought, action, observation } = steps;
     console.log(' thought:', thought);
     console.log(' action:', action);
     console.log(' observation:', observation);
-    console.log(' answer:', answer);
-    const result = await act(document, question, action ? action : 'lookup: ' + question, observation, answer);
-    if (!result) {
-        return { thought, action: 'lookup: ' + question, observation, answer };
-    }
-    const { note, source, reference } = result;
-    console.log(' note:', note);
+    console.log(' intermediate answer:', steps.answer);
 
-    console.log('RESPONSE:');
-    console.log(' question:', question);
-    console.log(' thought:', thought);
-    console.log(' action:', action);
-    console.log(' observation:', note);
-    const reprompt = prompt + '\n' + flatten({ thought, action, observation: note }) + '\nAnswer:';
-    const final = await llama(reprompt);
-    console.log(' final:', final);
-    return { ...parse(reprompt + final), source, reference };
+    const { result, source, reference } = await act(document, question, action ? action : 'lookup: ' + question, observation);
+    return { thought, action, observation, answer: result, source, reference };
 }
 
 (async () => {

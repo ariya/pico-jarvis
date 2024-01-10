@@ -360,9 +360,9 @@ const reason = async (document, history, question) => {
     };
 
     const command = (key, response) => {
-        const value = state[key];
-        if (value) {
-            response.writeHead(200).end(JSON.stringify(state.reference));
+        const value = state[key.substring(1)];
+        if (value && typeof value === 'string') {
+            response.writeHead(200).end(value);
             return true;
         }
         return false;
@@ -379,21 +379,13 @@ const reason = async (document, history, question) => {
             const parsedUrl = new URL(`http://localhost/${url}`);
             const { search } = parsedUrl;
             const question = decodeURIComponent(search.substring(1));
-            if (question === '!source') {
-                response.writeHead(200).end(state.source);
-                return;
-            }
-            if (question === '!reference') {
-                response.writeHead(200).end(state.reference);
-                return;
-            }
             if (question === '!reset') {
                 state.history.length = 0;
                 response.writeHead(200).end('Multi-turn conversation is reset.');
                 return;
             }
-            while (state.history.length > 3) {
-                state.history.shift();
+            if (command(question, response)) {
+                return;
             }
             console.log();
             const start = Date.now();
@@ -401,9 +393,12 @@ const reason = async (document, history, question) => {
             const elapsed = Date.now() - start;
             state.source = source;
             state.reference = reference;
+            response.writeHead(200).end(answer);
             console.log('Responded in', elapsed, 'ms');
             state.history.push({ question, thought, action, observation, answer });
-            response.writeHead(200).end(answer);
+            while (state.history.length > 3) {
+                state.history.shift();
+            }
         } else {
             console.error(`${url} is 404!`)
             response.writeHead(404);

@@ -13,7 +13,7 @@ const llama = async (prompt, attempt = 1) => {
     const headers = {
         'Content-Type': 'application/json'
     };
-    const stop = ['Llama:', 'User:', 'Question:'];
+    const stop = ['Llama:', 'User:', 'Question:', 'FINAL:'];
     const body = JSON.stringify({
         prompt,
         stop,
@@ -36,7 +36,40 @@ const llama = async (prompt, attempt = 1) => {
     return await llama(prompt, attempt + 1);
 }
 
-const weather = async (location) => {
+const ANSWER_PROMPT = `You are an expert in retrieving information.
+You are given a {{KIND}}, and then you respond to a question.
+Avoid stating your personal opinion. Avoid making other commentary.
+Think step by step.
+
+Here is the {{KIND}}:
+
+{{PASSAGES}}
+
+(End of {{KIND}})
+
+Now it is time to use the above {{KIND}} exclusively to answer this.
+
+Question: {{QUESTION}}
+Thought: Let us the above reference document to find the answer.
+Answer:`;
+
+const answer = async (kind, passages, question) => {
+    console.log('ANSWER:');
+    console.log(' question:', question);
+    console.log('------- passages -------');
+    console.log(passages);
+    console.log('-------');
+    const input = ANSWER_PROMPT.
+        replaceAll('{{KIND}}', kind).
+        replace('{{PASSAGES}}', passages).
+        replace('{{QUESTION}}', question);
+    const output = await llama(input);
+    const response = parse(input + output);
+    console.log(' answer:', response.answer);
+    return response.answer || "ERROR: Unable to answer this!";
+}
+
+const weather = async (question, location) => {
     const WEATHER_ERROR_MSG = `Unable to retrieve weather information.
     Please supply a valid API key for OpenWeatherMap as OPENWEATHERMAP_API_KEY environment variable.`
 
@@ -66,13 +99,17 @@ const weather = async (location) => {
     console.log(' pressure:', pressure);
     console.log(' temp:', temp);
     console.log(' humidity:', humidity);
-    const summary = `This is the weather observation for ${name}.
+
+    const reference = `Weather API: ${JSON.stringify({ description, ...main })}`;
+    const source = `This is the weather observation for ${name}.
 The current weather condition is ${description}.
 * barometric pressure: ${pressure} mbars.
 * temperature (in Celcius): ${Math.round(temp)} °C.
 * temperature (in Fahrenheit): ${Math.round(32 + temp * 9 / 5)} °F.
 * humidity: ${humidity}%.`;
-    return { summary, description, temp, humidity };
+
+    const result = await answer('weather report', source, question);
+    return { result, source, reference };
 }
 
 const ingest = async (url) => {
@@ -147,9 +184,9 @@ const ingest = async (url) => {
     return document;
 }
 
-const parse = (text) => {
+const parse = (text, markers) => {
     const parts = {};
-    const MARKERS = ['Answer', 'Observation', 'Action', 'Thought'];
+    const MARKERS = markers || ['Answer', 'Observation', 'Action', 'Thought'];
     const ANCHOR = MARKERS.slice().pop();
     const start = text.lastIndexOf(ANCHOR + ':');
     if (start >= 0) {
@@ -167,39 +204,6 @@ const parse = (text) => {
         }
     }
     return parts;
-}
-
-const LOOKUP_PROMPT = `You are an expert in retrieving information.
-You are given a {{KIND}}, and then you respond to a question.
-Avoid stating your personal opinion. Avoid making other commentary.
-Think step by step.
-
-Here is the {{KIND}}:
-
-{{PASSAGES}}
-
-(End of {{KIND}})
-
-Now it is time to use the above {{KIND}} exclusively to answer this.
-
-Question: {{QUESTION}}
-Thought: Let us the above reference document to find the answer.
-Answer:`;
-
-const answer = async (kind, passages, question) => {
-    console.log('ANSWER:');
-    console.log(' question:', question);
-    console.log('------- passages -------');
-    console.log(passages);
-    console.log('-------');
-    const input = LOOKUP_PROMPT.
-        replaceAll('{{KIND}}', kind).
-        replace('{{PASSAGES}}', passages).
-        replace('{{QUESTION}}', question);
-    const output = await llama(input);
-    const response = parse(input + output);
-    console.log(' answer:', response.answer);
-    return response.answer;
 }
 
 const lookup = async (document, question, hint) => {
@@ -267,27 +271,42 @@ const lookup = async (document, question, hint) => {
     return { result, source, reference: passages };
 }
 
-const act = async (document, question, action, observation) => {
-    const sep = action.indexOf(':');
-    const name = action.substring(0, sep);
-    const arg = action.substring(sep + 1).trim();
+const CLASSIFY_PROMPT = `You receiving an inquiry from human.
+Your task is to categorize the inquiry as WEATHER if it is related to the weather condition of a specific location on earth,
+regardless whether it is likely going to happen or not.
+Otherwise, categorize it as INVALID.
+Extract the specified place mention in the query as the Location.
 
-    if (name === 'lookup') {
-        const { result, source, reference } = await lookup(document, question, observation);
-        return { result, source, reference };
-    }
+Here are some examples:
 
-    if (name === 'weather') {
-        const condition = await weather(arg);
-        const { summary } = condition;
-        const result = await answer('weather report', summary, question);
-        const reference = `Weather API: ${JSON.stringify(condition)}`;
-        return { result, source: summary, reference };
-    }
+Question: I love the new Batman movie!
+Thought: Movie has nothing to do with weather
+Category: INVALID
+Location: None
+FINAL: Done
 
-    // fallback to a manual lookup
-    console.error('Not recognized action', name, arg);
-    return await act(document, question, 'lookup: ' + question, observation);
+Question: Is it going to snow tomorrow in Timbuktu?
+Thought: Snowing a weather condition
+Category: WEATHER
+Location: Timbuktu
+FINAL: Done
+
+Now it's your turn. Let's start!
+
+Question: {{QUESTION}}
+`;
+
+async function classify(question) {
+    console.log('CLASSIFY:');
+    console.log(' question:', question);
+    const prompt = CLASSIFY_PROMPT.replace('{{QUESTION}}', question);
+    const response = await llama(prompt);
+    const markers = ['Location', 'Category', 'Thought'];
+    const { thought, category, location } = parse(response, markers);
+    console.log(' thought:', thought);
+    console.log(' category:', category);
+    console.log(' location:', location);
+    return { category, location };
 }
 
 const REASON_PROMPT = `You run in a process of Question, Thought, Action, Observation.
@@ -295,11 +314,7 @@ const REASON_PROMPT = `You run in a process of Question, Thought, Action, Observ
 Think step by step. Always specify the full steps: Thought, Action, Observation, and Answer.
 
 Use Thought to describe your thoughts about the question you have been asked.
-For Action, choose exactly one the following:
-
-- weather: location
-- lookup: terms
-
+Use Action to determine the key phrases related to the question.
 Observation will be the result of running those actions.
 Finally at the end, state the Answer in the same language as the original Question.
 
@@ -307,21 +322,16 @@ Here are some sample sessions.
 
 Question: What is capital of france?
 Thought: This is about geography, I can recall the answer from my memory.
-Action: lookup: capital of France.
+Action: capital of France.
 Observation: Paris is the capital of France.
 Answer: The capital of France is Paris.
-
-Question: How's the temperature in Berlin?
-Thought: This is related to weather and I always use weather action.
-Action: weather: Berlin
-Observation: Cloudy at 17 degrees Celcius.
-Answer: 17 degrees Celcius.
 
 {{CONTEXT}}
 
 Now it is your turn to answer the following!
 
-Question: {{QUESTION}}`;
+Question: {{QUESTION}}
+`;
 
 const reason = async (document, history, question) => {
 
@@ -343,7 +353,10 @@ const reason = async (document, history, question) => {
     console.log(' observation:', observation);
     console.log(' intermediate answer:', steps.answer);
 
-    const { result, source, reference } = await act(document, question, action ? action : 'lookup: ' + question, observation);
+    const { category, location } = await classify(action || thought || question);
+
+    const search = !category || !location || category?.toUpperCase().indexOf('WEATHER') < 0;
+    const { result, source, reference } = search ? await lookup(document, question, observation) : await weather(question, location);
     return { thought, action, observation, answer: result, source, reference };
 }
 

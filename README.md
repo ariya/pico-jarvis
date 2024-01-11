@@ -7,6 +7,7 @@ This repository contains the source code for the Retrieval-augmented Generation 
 * [Part 1: Getting started, Chain of Thought](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-1-ariya-hidayat-pcygc/)
 * [Part 2: Reason-Act, multi-turn conversation](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-2-ariya-hidayat-plynf/)
 * [Part 3: PDF ingestion, vector search](https://www.linkedin.com/pulse/pico-jarvis-llm-based-chatbot-demo-rag-part-3-ariya-hidayat-zchec)
+* [Bonus: RAG with SLM (Small Language Model)](https://www.linkedin.com/pulse/phi-2-rag-emergence-small-language-model-slm-ariya-hidayat-2w6ac)
 
 First, you need to run the [API server](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md) of [llama.cpp](https://github.com/ggerganov/llama.cpp) with [Mistral 7B OpenOrca](https://huggingface.co/TheBloke/Mistral-7B-OpenOrca-GGUF), e.g.:
 ```

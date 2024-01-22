@@ -13,7 +13,7 @@ const llama = async (prompt, attempt = 1) => {
     const headers = {
         'Content-Type': 'application/json'
     };
-    const stop = ['Llama:', 'User:', 'Question:', 'FINAL:'];
+    const stop = ['Llama:', 'User:', 'Question:', 'FINAL:', '<|im_end|>'];
     const body = JSON.stringify({
         prompt,
         stop,

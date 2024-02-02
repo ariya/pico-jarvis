@@ -296,7 +296,7 @@ Now it's your turn. Let's start!
 Question: {{QUESTION}}
 `;
 
-async function classify(question) {
+const classify = async (question) => {
     console.log('CLASSIFY:');
     console.log(' question:', question);
     const prompt = CLASSIFY_PROMPT.replace('{{QUESTION}}', question);
